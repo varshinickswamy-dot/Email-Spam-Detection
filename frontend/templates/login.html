@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block public_content %}
+<main class="auth-wrap">
+  <a class="brand auth-brand" href="{{ url_for('home') }}"><span class="brand-mark">I</span><span>inbox<span>guard</span></span></a>
+  <section class="auth-card"><span class="eyebrow">WELCOME BACK</span><h1>Sign in to your workspace</h1><p>Your scan history is private to your account.</p>
+    {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Email address<input name="email" type="email" autocomplete="email" required maxlength="320" value="{{ request.form.get('email', '') }}"></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+      <button class="button button-primary full-button" type="submit">Sign in <span>→</span></button>
+    </form>
+    <div class="auth-switch">New to InboxGuard? <a href="{{ url_for('register') }}">Create an account</a></div>
+  </section>
+  <p class="auth-note">Local educational application · Do not upload sensitive or confidential email.</p>
+</main>
+{% endblock %}

@@ -1,0 +1,151 @@
+{
+  "dataset_rows": 5158,
+  "train_rows": 4126,
+  "test_rows": 1032,
+  "random_state": 42,
+  "selected_model": "Linear Support Vector Machine",
+  "selection_metric": "spam F2 (beta=1.5), then spam precision, then accuracy",
+  "models": [
+    {
+      "model": "Multinomial Naive Bayes",
+      "accuracy": 0.9670542635658915,
+      "spam_precision": 1.0,
+      "spam_recall": 0.734375,
+      "spam_f1": 0.8468468468468469,
+      "spam_f2": 0.7997382198952879,
+      "false_positives": 0,
+      "false_positive_rate": 0.0,
+      "confusion_matrix": [
+        [
+          904,
+          0
+        ],
+        [
+          34,
+          94
+        ]
+      ],
+      "classification_report": {
+        "not_spam": {
+          "precision": 0.9637526652452025,
+          "recall": 1.0,
+          "f1-score": 0.9815418023887079,
+          "support": 904.0
+        },
+        "spam": {
+          "precision": 1.0,
+          "recall": 0.734375,
+          "f1-score": 0.8468468468468469,
+          "support": 128.0
+        },
+        "accuracy": 0.9670542635658915,
+        "macro avg": {
+          "precision": 0.9818763326226012,
+          "recall": 0.8671875,
+          "f1-score": 0.9141943246177774,
+          "support": 1032.0
+        },
+        "weighted avg": {
+          "precision": 0.9682484587031619,
+          "recall": 0.9670542635658915,
+          "f1-score": 0.9648354513137485,
+          "support": 1032.0
+        }
+      }
+    },
+    {
+      "model": "Logistic Regression",
+      "accuracy": 0.9748062015503876,
+      "spam_precision": 0.8863636363636364,
+      "spam_recall": 0.9140625,
+      "spam_f1": 0.9,
+      "spam_f2": 0.905357142857143,
+      "false_positives": 15,
+      "false_positive_rate": 0.016592920353982302,
+      "confusion_matrix": [
+        [
+          889,
+          15
+        ],
+        [
+          11,
+          117
+        ]
+      ],
+      "classification_report": {
+        "not_spam": {
+          "precision": 0.9877777777777778,
+          "recall": 0.9834070796460177,
+          "f1-score": 0.9855875831485588,
+          "support": 904.0
+        },
+        "spam": {
+          "precision": 0.8863636363636364,
+          "recall": 0.9140625,
+          "f1-score": 0.9,
+          "support": 128.0
+        },
+        "accuracy": 0.9748062015503876,
+        "macro avg": {
+          "precision": 0.937070707070707,
+          "recall": 0.9487347898230089,
+          "f1-score": 0.9427937915742794,
+          "support": 1032.0
+        },
+        "weighted avg": {
+          "precision": 0.9751992796178843,
+          "recall": 0.9748062015503876,
+          "f1-score": 0.9749720689595903,
+          "support": 1032.0
+        }
+      }
+    },
+    {
+      "model": "Linear Support Vector Machine",
+      "accuracy": 0.9815891472868217,
+      "spam_precision": 0.9224806201550387,
+      "spam_recall": 0.9296875,
+      "spam_f1": 0.9260700389105059,
+      "spam_f2": 0.9274580335731414,
+      "false_positives": 10,
+      "false_positive_rate": 0.011061946902654867,
+      "confusion_matrix": [
+        [
+          894,
+          10
+        ],
+        [
+          9,
+          119
+        ]
+      ],
+      "classification_report": {
+        "not_spam": {
+          "precision": 0.9900332225913622,
+          "recall": 0.9889380530973452,
+          "f1-score": 0.9894853348090759,
+          "support": 904.0
+        },
+        "spam": {
+          "precision": 0.9224806201550387,
+          "recall": 0.9296875,
+          "f1-score": 0.9260700389105059,
+          "support": 128.0
+        },
+        "accuracy": 0.9815891472868217,
+        "macro avg": {
+          "precision": 0.9562569213732004,
+          "recall": 0.9593127765486726,
+          "f1-score": 0.9577776868597909,
+          "support": 1032.0
+        },
+        "weighted avg": {
+          "precision": 0.9816546052349189,
+          "recall": 0.9815891472868217,
+          "f1-score": 0.9816198717518889,
+          "support": 1032.0
+        }
+      }
+    }
+  ]
+}

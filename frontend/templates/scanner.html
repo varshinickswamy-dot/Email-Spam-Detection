@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Email scanner{% endblock %}
+{% block breadcrumb %}Email scanner{% endblock %}
+{% block content %}
+<header class="page-title"><div><span class="eyebrow">MESSAGE INSPECTION</span><h1>Scan an email</h1><p>Enter the sender, subject, and content. URLs are inspected as text only and never opened.</p></div><span class="privacy-pill">⌑ &nbsp; Private workspace</span></header>
+<section class="scan-layout">
+  <form id="scan-form" class="surface scan-form">
+    <div class="form-grid">
+      <label>Sender <span>OPTIONAL</span><input id="email-sender" maxlength="320" placeholder="name@example.com"></label>
+      <label>Subject <span>OPTIONAL</span><input id="email-subject" maxlength="500" placeholder="Email subject line"></label>
+    </div>
+    <label class="field-label">Email body<textarea id="email-body" maxlength="50000" rows="10" placeholder="Paste the plain-text email body here…"></textarea><small><span id="body-count">0</span> / 50,000 characters</small></label>
+    <details class="advanced-fields"><summary>Advanced: HTML or raw email source</summary>
+      <label class="field-label">HTML body <textarea id="email-html" maxlength="50000" rows="5" placeholder="Optional HTML content (scripts are not executed)"></textarea></label>
+      <label class="field-label">Complete raw email<textarea id="raw-email" maxlength="50000" rows="6" placeholder="Paste RFC 5322/MIME headers and body. This will be parsed locally."></textarea></label>
+    </details>
+    <div class="sample-row"><span>Quick examples</span><button type="button" class="sample-button" data-sample="phishing">Suspicious request</button><button type="button" class="sample-button" data-sample="legitimate">Normal message</button></div>
+    <div class="scan-controls"><button type="button" id="clear-scan" class="button button-secondary">Clear</button><button type="submit" class="button button-primary" id="scan-submit">Analyze email <span>→</span></button></div>
+    <p class="fine-print">Do not click links based on this result. Classifications and risk indicators are advisory and can be wrong.</p>
+  </form>
+  <section class="surface result-panel" aria-live="polite"><div id="result-empty" class="result-empty"><span class="result-symbol">⌕</span><h2>Findings appear here</h2><p>Submit an email to view the model assessment, risk indicators, and recommended next step.</p></div><div id="scan-result" class="scan-result" hidden></div></section>
+</section>
+{% endblock %}

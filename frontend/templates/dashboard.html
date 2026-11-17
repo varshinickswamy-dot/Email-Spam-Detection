@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+{% block content %}
+<section class="page-heading dashboard-hero">
+  <div><span class="eyebrow">YOUR EMAIL SECURITY WORKSPACE</span><h1>A little more clarity<br>for your <em>inbox.</em></h1><p>Scan a message or review the security signals from your recent activity.</p><a class="button button-primary" href="{{ url_for('scanner') }}">Scan an email <span>→</span></a></div>
+  <div class="hero-shield" aria-hidden="true"><div class="shield-shape">✓</div><span>Analyze with care</span></div>
+</section>
+<section class="stat-grid" aria-label="Scan analytics">
+  <article class="stat-card"><span>Total scans</span><b id="stat-total">—</b><small>Messages analyzed</small></article>
+  <article class="stat-card"><span>Spam detected</span><b id="stat-spam">—</b><small id="stat-spam-note">Model decision threshold</small></article>
+  <article class="stat-card"><span>Legitimate</span><b id="stat-legitimate">—</b><small>Below spam threshold</small></article>
+  <article class="stat-card"><span>Spam rate</span><b id="stat-rate">—</b><small>Share of all scans</small></article>
+  <article class="stat-card"><span>Phishing signals</span><b id="stat-phishing">—</b><small>Rule-assisted warning</small></article>
+</section>
+<section class="dashboard-grid">
+  <article class="surface chart-card"><div class="card-heading"><div><span class="eyebrow">CLASSIFICATION</span><h2>Scan distribution</h2></div><span class="quiet-label">Your account</span></div><div class="distribution" id="distribution"></div></article>
+  <article class="surface model-summary"><div class="card-heading"><div><span class="eyebrow">MODEL STATUS</span><h2 id="model-name">Loading model…</h2></div><span class="status-pip"></span></div><p id="model-description">Email-specific model evaluation and calibration details.</p><div class="metric-row"><span>Spam precision <b id="metric-precision">—</b></span><span>Spam recall <b id="metric-recall">—</b></span><span>Spam F1 <b id="metric-f1">—</b></span></div><a class="inline-link" href="{{ url_for('about') }}">Review model details <span>→</span></a></article>
+</section>
+<section class="surface trend-card"><div class="card-heading"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>Daily scan volume</h2></div><span class="quiet-label">Last 14 days</span></div><div class="trend-chart" id="activity-chart"></div></section>
+<section class="surface recent-card"><div class="card-heading"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>Latest scans</h2></div><a class="inline-link" href="{{ url_for('history_page') }}">View all <span>→</span></a></div><div class="table-wrap"><table><thead><tr><th>SUBJECT</th><th>CLASSIFICATION</th><th>RISK</th><th>TIME</th></tr></thead><tbody id="recent-scans"><tr><td colspan="4" class="empty-row">No scans yet. Start by analyzing an email.</td></tr></tbody></table></div></section>
+{% endblock %}

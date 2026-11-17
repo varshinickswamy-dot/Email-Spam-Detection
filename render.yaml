@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: inboxguard-email-security
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 run:app
+    healthCheckPath: /
+    disk:
+      name: inboxguard-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: INBOXGUARD_SECRET_KEY
+        generateValue: true
+      - key: INBOXGUARD_DATABASE
+        value: /var/data/spam_history.sqlite3
+      - key: INBOXGUARD_SECURE_COOKIES
+        value: "true"

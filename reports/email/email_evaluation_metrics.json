@@ -1,0 +1,680 @@
+{
+  "dataset": {
+    "model_name": "Linear Support Vector Machine",
+    "training_mode": "original_imbalanced",
+    "feature_type": "text_and_structural",
+    "dataset_name": "Apache SpamAssassin Public Corpus",
+    "dataset_scope": "Email-only; SMS corpus is trained/evaluated separately and never mixed.",
+    "dataset_records_after_deduplication": 5838,
+    "dataset_label_distribution": {
+      "legitimate": 4097,
+      "spam": 1741
+    },
+    "split_counts": {
+      "selection_train": 3502,
+      "validation": 1168,
+      "development": 4670,
+      "test": 1168
+    },
+    "selection_metric": "validation F1/PR-AUC composite, with false-positive-rate penalty",
+    "selection_score": 0.8847093833650614,
+    "random_state": 42,
+    "balancing": "Random undersampling is applied only to training indices. Validation and test keep their natural class distribution.",
+    "calibration": {
+      "base_training_rows": 3152,
+      "calibration_rows": 1051,
+      "threshold_validation_rows": 467,
+      "calibration_method": "sigmoid on a separate, unbalanced development calibration split",
+      "threshold_method": "maximum recall with validation precision >= 0.95 and FPR <= 0.02",
+      "threshold_validation_metrics": {
+        "accuracy": 0.987152034261242,
+        "spam_precision": 0.9854014598540146,
+        "spam_recall": 0.9712230215827338,
+        "spam_f1": 0.9782608695652174,
+        "roc_auc": 0.998859449026145,
+        "pr_auc": 0.9975275198696262,
+        "false_positives": 2,
+        "false_negatives": 4,
+        "false_positive_rate": 0.006097560975609756,
+        "false_negative_rate": 0.02877697841726619,
+        "confusion_matrix": [
+          [
+            326,
+            2
+          ],
+          [
+            4,
+            135
+          ]
+        ]
+      }
+    },
+    "threshold": 0.26,
+    "metrics": {
+      "accuracy": 0.9828767123287672,
+      "spam_precision": 0.963276836158192,
+      "spam_recall": 0.9798850574712644,
+      "spam_f1": 0.9715099715099715,
+      "roc_auc": 0.9986858704793945,
+      "pr_auc": 0.9970850241941001,
+      "false_positives": 13,
+      "false_negatives": 7,
+      "false_positive_rate": 0.015853658536585366,
+      "false_negative_rate": 0.020114942528735632,
+      "confusion_matrix": [
+        [
+          807,
+          13
+        ],
+        [
+          7,
+          341
+        ]
+      ],
+      "classification_report": {
+        "legitimate": {
+          "precision": 0.9914004914004914,
+          "recall": 0.9841463414634146,
+          "f1-score": 0.9877600979192166,
+          "support": 820.0
+        },
+        "spam": {
+          "precision": 0.963276836158192,
+          "recall": 0.9798850574712644,
+          "f1-score": 0.9715099715099715,
+          "support": 348.0
+        },
+        "accuracy": 0.9828767123287672,
+        "macro avg": {
+          "precision": 0.9773386637793418,
+          "recall": 0.9820156994673395,
+          "f1-score": 0.9796350347145941,
+          "support": 1168.0
+        },
+        "weighted avg": {
+          "precision": 0.9830211831604913,
+          "recall": 0.9828767123287672,
+          "f1-score": 0.9829184506671471,
+          "support": 1168.0
+        }
+      },
+      "brier_score": 0.012927398154052448,
+      "decision_threshold": 0.26
+    },
+    "software_versions": {
+      "scikit_learn": "1.9.1"
+    },
+    "cleaning": {
+      "invalid_or_corrupt_rows_skipped": 0,
+      "conflicting_duplicate_rows_removed": 0,
+      "duplicate_rows_removed": 92
+    }
+  },
+  "selected_model": "Linear Support Vector Machine",
+  "selected_training_mode": "original_imbalanced",
+  "selection_validation_metrics": [
+    {
+      "model": "Multinomial Naive Bayes",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "selection_score": 0.8682947319369053,
+      "accuracy": 0.9726027397260274,
+      "spam_precision": 0.9463276836158192,
+      "spam_recall": 0.9626436781609196,
+      "spam_f1": 0.9544159544159544,
+      "roc_auc": 0.9961662461452201,
+      "pr_auc": 0.9876658005110344,
+      "false_positives": 19,
+      "false_negatives": 13,
+      "false_positive_rate": 0.023170731707317073,
+      "false_negative_rate": 0.03735632183908046,
+      "confusion_matrix": [
+        [
+          801,
+          19
+        ],
+        [
+          13,
+          335
+        ]
+      ]
+    },
+    {
+      "model": "Multinomial Naive Bayes",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "selection_score": 0.8664483440817005,
+      "accuracy": 0.9708904109589042,
+      "spam_precision": 0.9175531914893617,
+      "spam_recall": 0.9913793103448276,
+      "spam_f1": 0.9530386740331491,
+      "roc_auc": 0.9966165545276142,
+      "pr_auc": 0.9887358890524182,
+      "false_positives": 31,
+      "false_negatives": 3,
+      "false_positive_rate": 0.03780487804878049,
+      "false_negative_rate": 0.008620689655172414,
+      "confusion_matrix": [
+        [
+          789,
+          31
+        ],
+        [
+          3,
+          345
+        ]
+      ]
+    },
+    {
+      "model": "Logistic Regression",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "selection_score": 0.8742630344968397,
+      "accuracy": 0.9803082191780822,
+      "spam_precision": 0.968299711815562,
+      "spam_recall": 0.9655172413793104,
+      "spam_f1": 0.9669064748201439,
+      "roc_auc": 0.9945367255396692,
+      "pr_auc": 0.9823026764582709,
+      "false_positives": 11,
+      "false_negatives": 12,
+      "false_positive_rate": 0.013414634146341463,
+      "false_negative_rate": 0.034482758620689655,
+      "confusion_matrix": [
+        [
+          809,
+          11
+        ],
+        [
+          12,
+          336
+        ]
+      ]
+    },
+    {
+      "model": "Logistic Regression",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "selection_score": 0.8677136323813387,
+      "accuracy": 0.976027397260274,
+      "spam_precision": 0.9419889502762431,
+      "spam_recall": 0.9798850574712644,
+      "spam_f1": 0.9605633802816902,
+      "roc_auc": 0.9926303616484441,
+      "pr_auc": 0.9770421395319004,
+      "false_positives": 21,
+      "false_negatives": 7,
+      "false_positive_rate": 0.025609756097560974,
+      "false_negative_rate": 0.020114942528735632,
+      "confusion_matrix": [
+        [
+          799,
+          21
+        ],
+        [
+          7,
+          341
+        ]
+      ]
+    },
+    {
+      "model": "Linear Support Vector Machine",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "selection_score": 0.8847093833650614,
+      "accuracy": 0.9871575342465754,
+      "spam_precision": 0.9770773638968482,
+      "spam_recall": 0.9798850574712644,
+      "spam_f1": 0.9784791965566715,
+      "roc_auc": 0.9955985421923186,
+      "pr_auc": 0.9929183857571133,
+      "false_positives": 8,
+      "false_negatives": 7,
+      "false_positive_rate": 0.00975609756097561,
+      "false_negative_rate": 0.020114942528735632,
+      "confusion_matrix": [
+        [
+          812,
+          8
+        ],
+        [
+          7,
+          341
+        ]
+      ]
+    },
+    {
+      "model": "Linear Support Vector Machine",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "selection_score": 0.873763938796342,
+      "accuracy": 0.9794520547945206,
+      "spam_precision": 0.95,
+      "spam_recall": 0.9827586206896551,
+      "spam_f1": 0.9661016949152542,
+      "roc_auc": 0.9944210821418559,
+      "pr_auc": 0.9845803672690618,
+      "false_positives": 18,
+      "false_negatives": 6,
+      "false_positive_rate": 0.02195121951219512,
+      "false_negative_rate": 0.017241379310344827,
+      "confusion_matrix": [
+        [
+          802,
+          18
+        ],
+        [
+          6,
+          342
+        ]
+      ]
+    },
+    {
+      "model": "Random Forest",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "selection_score": 0.8693092259756717,
+      "accuracy": 0.9708904109589042,
+      "spam_precision": 0.9672619047619048,
+      "spam_recall": 0.9339080459770115,
+      "spam_f1": 0.9502923976608187,
+      "roc_auc": 0.9975119147743201,
+      "pr_auc": 0.9942567733624446,
+      "false_positives": 11,
+      "false_negatives": 23,
+      "false_positive_rate": 0.013414634146341463,
+      "false_negative_rate": 0.06609195402298851,
+      "confusion_matrix": [
+        [
+          809,
+          11
+        ],
+        [
+          23,
+          325
+        ]
+      ]
+    },
+    {
+      "model": "Random Forest",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "selection_score": 0.8659941599124225,
+      "accuracy": 0.9691780821917808,
+      "spam_precision": 0.9216216216216216,
+      "spam_recall": 0.9798850574712644,
+      "spam_f1": 0.9498607242339833,
+      "roc_auc": 0.9966428371180263,
+      "pr_auc": 0.991735276998815,
+      "false_positives": 29,
+      "false_negatives": 7,
+      "false_positive_rate": 0.03536585365853658,
+      "false_negative_rate": 0.020114942528735632,
+      "confusion_matrix": [
+        [
+          791,
+          29
+        ],
+        [
+          7,
+          341
+        ]
+      ]
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_type": "structural_only",
+      "training_mode": "original_imbalanced",
+      "selection_score": 0.7632253754233754,
+      "accuracy": 0.9041095890410958,
+      "spam_precision": 0.9013605442176871,
+      "spam_recall": 0.7614942528735632,
+      "spam_f1": 0.8255451713395638,
+      "roc_auc": 0.9286129800953182,
+      "pr_auc": 0.8934631901499115,
+      "false_positives": 29,
+      "false_negatives": 83,
+      "false_positive_rate": 0.03536585365853658,
+      "false_negative_rate": 0.23850574712643677,
+      "confusion_matrix": [
+        [
+          791,
+          29
+        ],
+        [
+          83,
+          265
+        ]
+      ]
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_type": "structural_only",
+      "training_mode": "balanced_undersampled",
+      "selection_score": 0.7372028491483958,
+      "accuracy": 0.8741438356164384,
+      "spam_precision": 0.773841961852861,
+      "spam_recall": 0.8160919540229885,
+      "spam_f1": 0.7944055944055944,
+      "roc_auc": 0.9236858704793944,
+      "pr_auc": 0.8868620669852316,
+      "false_positives": 83,
+      "false_negatives": 64,
+      "false_positive_rate": 0.10121951219512196,
+      "false_negative_rate": 0.1839080459770115,
+      "confusion_matrix": [
+        [
+          737,
+          83
+        ],
+        [
+          64,
+          284
+        ]
+      ]
+    }
+  ],
+  "untouched_test_comparisons": [
+    {
+      "model": "Multinomial Naive Bayes",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "accuracy": 0.9837328767123288,
+      "spam_precision": 0.9768115942028985,
+      "spam_recall": 0.9683908045977011,
+      "spam_f1": 0.9725829725829725,
+      "roc_auc": 0.9980445752733389,
+      "pr_auc": 0.9951562948108237,
+      "false_positives": 8,
+      "false_negatives": 11,
+      "false_positive_rate": 0.00975609756097561,
+      "false_negative_rate": 0.031609195402298854,
+      "confusion_matrix": [
+        [
+          812,
+          8
+        ],
+        [
+          11,
+          337
+        ]
+      ]
+    },
+    {
+      "model": "Multinomial Naive Bayes",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "accuracy": 0.9803082191780822,
+      "spam_precision": 0.9526462395543176,
+      "spam_recall": 0.9827586206896551,
+      "spam_f1": 0.9674681753889675,
+      "roc_auc": 0.998244322960471,
+      "pr_auc": 0.9955283765206274,
+      "false_positives": 17,
+      "false_negatives": 6,
+      "false_positive_rate": 0.020731707317073172,
+      "false_negative_rate": 0.017241379310344827,
+      "confusion_matrix": [
+        [
+          803,
+          17
+        ],
+        [
+          6,
+          342
+        ]
+      ]
+    },
+    {
+      "model": "Logistic Regression",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "accuracy": 0.9820205479452054,
+      "spam_precision": 0.9766763848396501,
+      "spam_recall": 0.9626436781609196,
+      "spam_f1": 0.9696092619392185,
+      "roc_auc": 0.998629800953182,
+      "pr_auc": 0.9969039978225862,
+      "false_positives": 8,
+      "false_negatives": 13,
+      "false_positive_rate": 0.00975609756097561,
+      "false_negative_rate": 0.03735632183908046,
+      "confusion_matrix": [
+        [
+          812,
+          8
+        ],
+        [
+          13,
+          335
+        ]
+      ]
+    },
+    {
+      "model": "Logistic Regression",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "accuracy": 0.978595890410959,
+      "spam_precision": 0.9523809523809523,
+      "spam_recall": 0.9770114942528736,
+      "spam_f1": 0.9645390070921985,
+      "roc_auc": 0.9979184188393608,
+      "pr_auc": 0.9951498578071483,
+      "false_positives": 17,
+      "false_negatives": 8,
+      "false_positive_rate": 0.020731707317073172,
+      "false_negative_rate": 0.022988505747126436,
+      "confusion_matrix": [
+        [
+          803,
+          17
+        ],
+        [
+          8,
+          340
+        ]
+      ]
+    },
+    {
+      "model": "Linear Support Vector Machine",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "accuracy": 0.9863013698630136,
+      "spam_precision": 0.9770114942528736,
+      "spam_recall": 0.9770114942528736,
+      "spam_f1": 0.9770114942528736,
+      "roc_auc": 0.9987629660779367,
+      "pr_auc": 0.9975215607512001,
+      "false_positives": 8,
+      "false_negatives": 8,
+      "false_positive_rate": 0.00975609756097561,
+      "false_negative_rate": 0.022988505747126436,
+      "confusion_matrix": [
+        [
+          812,
+          8
+        ],
+        [
+          8,
+          340
+        ]
+      ]
+    },
+    {
+      "model": "Linear Support Vector Machine",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "accuracy": 0.9828767123287672,
+      "spam_precision": 0.963276836158192,
+      "spam_recall": 0.9798850574712644,
+      "spam_f1": 0.9715099715099715,
+      "roc_auc": 0.9985351836276983,
+      "pr_auc": 0.9968909708768248,
+      "false_positives": 13,
+      "false_negatives": 7,
+      "false_positive_rate": 0.015853658536585366,
+      "false_negative_rate": 0.020114942528735632,
+      "confusion_matrix": [
+        [
+          807,
+          13
+        ],
+        [
+          7,
+          341
+        ]
+      ]
+    },
+    {
+      "model": "Random Forest",
+      "feature_type": "text_and_structural",
+      "training_mode": "original_imbalanced",
+      "accuracy": 0.9794520547945206,
+      "spam_precision": 0.9792899408284024,
+      "spam_recall": 0.9511494252873564,
+      "spam_f1": 0.9650145772594753,
+      "roc_auc": 0.9974278104850014,
+      "pr_auc": 0.9942051832961767,
+      "false_positives": 7,
+      "false_negatives": 17,
+      "false_positive_rate": 0.00853658536585366,
+      "false_negative_rate": 0.04885057471264368,
+      "confusion_matrix": [
+        [
+          813,
+          7
+        ],
+        [
+          17,
+          331
+        ]
+      ]
+    },
+    {
+      "model": "Random Forest",
+      "feature_type": "text_and_structural",
+      "training_mode": "balanced_undersampled",
+      "accuracy": 0.9803082191780822,
+      "spam_precision": 0.9501385041551247,
+      "spam_recall": 0.985632183908046,
+      "spam_f1": 0.9675599435825106,
+      "roc_auc": 0.9971684889262685,
+      "pr_auc": 0.9933551975912086,
+      "false_positives": 18,
+      "false_negatives": 5,
+      "false_positive_rate": 0.02195121951219512,
+      "false_negative_rate": 0.014367816091954023,
+      "confusion_matrix": [
+        [
+          802,
+          18
+        ],
+        [
+          5,
+          343
+        ]
+      ]
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_type": "structural_only",
+      "training_mode": "original_imbalanced",
+      "accuracy": 0.8852739726027398,
+      "spam_precision": 0.8848920863309353,
+      "spam_recall": 0.7068965517241379,
+      "spam_f1": 0.7859424920127795,
+      "roc_auc": 0.9100697364732268,
+      "pr_auc": 0.8816253708112765,
+      "false_positives": 32,
+      "false_negatives": 102,
+      "false_positive_rate": 0.03902439024390244,
+      "false_negative_rate": 0.29310344827586204,
+      "confusion_matrix": [
+        [
+          788,
+          32
+        ],
+        [
+          102,
+          246
+        ]
+      ]
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_type": "structural_only",
+      "training_mode": "balanced_undersampled",
+      "accuracy": 0.8715753424657534,
+      "spam_precision": 0.78125,
+      "spam_recall": 0.7902298850574713,
+      "spam_f1": 0.7857142857142857,
+      "roc_auc": 0.9034552845528456,
+      "pr_auc": 0.8735245470235389,
+      "false_positives": 77,
+      "false_negatives": 73,
+      "false_positive_rate": 0.09390243902439024,
+      "false_negative_rate": 0.20977011494252873,
+      "confusion_matrix": [
+        [
+          743,
+          77
+        ],
+        [
+          73,
+          275
+        ]
+      ]
+    }
+  ],
+  "final_calibrated_test_metrics": {
+    "accuracy": 0.9828767123287672,
+    "spam_precision": 0.963276836158192,
+    "spam_recall": 0.9798850574712644,
+    "spam_f1": 0.9715099715099715,
+    "roc_auc": 0.9986858704793945,
+    "pr_auc": 0.9970850241941001,
+    "false_positives": 13,
+    "false_negatives": 7,
+    "false_positive_rate": 0.015853658536585366,
+    "false_negative_rate": 0.020114942528735632,
+    "confusion_matrix": [
+      [
+        807,
+        13
+      ],
+      [
+        7,
+        341
+      ]
+    ],
+    "classification_report": {
+      "legitimate": {
+        "precision": 0.9914004914004914,
+        "recall": 0.9841463414634146,
+        "f1-score": 0.9877600979192166,
+        "support": 820.0
+      },
+      "spam": {
+        "precision": 0.963276836158192,
+        "recall": 0.9798850574712644,
+        "f1-score": 0.9715099715099715,
+        "support": 348.0
+      },
+      "accuracy": 0.9828767123287672,
+      "macro avg": {
+        "precision": 0.9773386637793418,
+        "recall": 0.9820156994673395,
+        "f1-score": 0.9796350347145941,
+        "support": 1168.0
+      },
+      "weighted avg": {
+        "precision": 0.9830211831604913,
+        "recall": 0.9828767123287672,
+        "f1-score": 0.9829184506671471,
+        "support": 1168.0
+      }
+    },
+    "brier_score": 0.012927398154052448,
+    "decision_threshold": 0.26
+  }
+}

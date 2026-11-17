@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}InboxGuard{% endblock %} · InboxGuard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/security.css') }}">
+</head>
+<body>
+  {% if current_user %}
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="{{ url_for('dashboard') }}"><span class="brand-mark">I</span><span>inbox<span>guard</span></span></a>
+      <p class="nav-caption">SECURITY WORKSPACE</p>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}"><span>▦</span> Overview</a>
+        <a href="{{ url_for('scanner') }}" class="{% if request.endpoint == 'scanner' %}active{% endif %}"><span>⌕</span> Email scanner</a>
+        <a href="{{ url_for('bulk_scanner') }}" class="{% if request.endpoint == 'bulk_scanner' %}active{% endif %}"><span>▤</span> Bulk scan</a>
+        <a href="{{ url_for('history_page') }}" class="{% if request.endpoint == 'history_page' %}active{% endif %}"><span>◷</span> Scan history</a>
+        <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}"><span>ⓘ</span> About & model</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="privacy-card"><span class="privacy-icon">⌑</span><div><b>Private by design</b><small>Scans stay in this local app.</small></div></div>
+        <form action="{{ url_for('logout') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="logout-button" type="submit"><span>↪</span> Sign out</button>
+        </form>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-button" id="menu-toggle" aria-label="Toggle navigation">☰</button>
+        <div class="crumb">Workspace <span>/</span> <b>{% block breadcrumb %}Overview{% endblock %}</b></div>
+        <div class="top-actions"><button class="icon-button" id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">◐</button><span class="user-chip">Account</span></div>
+      </header>
+      <div class="content">{% block content %}{% endblock %}</div>
+    </main>
+  </div>
+  {% else %}
+    {% block public_content %}{% endblock %}
+  {% endif %}
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='js/security.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

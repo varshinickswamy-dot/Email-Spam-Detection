@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Bulk scanner{% endblock %}
+{% block breadcrumb %}Bulk scanner{% endblock %}
+{% block content %}
+<header class="page-title"><div><span class="eyebrow">BATCH ANALYSIS</span><h1>Bulk email scanner</h1><p>Analyze up to 500 email records from a UTF-8 CSV file. Uploads are processed in memory and not retained.</p></div></header>
+<section class="surface upload-card">
+  <form id="bulk-form">
+    <label for="csv-file" class="drop-zone"><span class="upload-icon">↑</span><b>Choose a CSV file</b><small>Maximum 5 MB · 500 rows · UTF-8</small><input type="file" id="csv-file" name="file" accept=".csv,text/csv" required></label>
+    <p class="fine-print">Required column: <code>body</code> or <code>message</code>. Optional: <code>subject</code>, <code>sender</code>, <code>html_body</code>.</p>
+    <button class="button button-primary" type="submit" id="bulk-submit">Scan CSV <span>→</span></button>
+  </form>
+</section>
+<section id="bulk-results" class="surface bulk-results" hidden aria-live="polite"><div class="card-heading"><div><span class="eyebrow">BATCH RESULTS</span><h2 id="bulk-summary">—</h2></div><a id="bulk-export" class="button button-secondary" href="#">Export this batch</a></div><div id="bulk-skipped" class="form-error" hidden></div><div class="table-wrap"><table><thead><tr><th>SUBJECT / MESSAGE</th><th>CLASSIFICATION</th><th>RISK</th><th>MODEL SCORE</th></tr></thead><tbody id="bulk-table"></tbody></table></div></section>
+{% endblock %}

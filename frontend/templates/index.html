@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8fafc">
+  <title>InboxGuard — Email Spam Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#overview" aria-label="InboxGuard home">
+        <span class="brand-mark">I</span>
+        <span>inbox<span class="brand-light">guard</span></span>
+      </a>
+      <div class="side-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="nav-link active" href="#overview"><span class="nav-icon">⌂</span> Overview</a>
+        <a class="nav-link" href="#detector"><span class="nav-icon">✳</span> Spam detector</a>
+        <a class="nav-link" href="#analytics"><span class="nav-icon">▥</span> Analytics</a>
+        <a class="nav-link" href="#history"><span class="nav-icon">◷</span> History</a>
+        <a class="nav-link" href="#about"><span class="nav-icon">ⓘ</span> About project</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="model-status"><span class="status-dot"></span><span><b>Model online</b><small id="model-name">Loading model details…</small></span></div>
+        <div class="sidebar-foot">A machine learning project<br>built to make inboxes safer.</div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="mobile-menu" id="menu-toggle" aria-label="Toggle menu">☰</button>
+        <div class="breadcrumb">Workspace <span>/</span> <b>Spam detection</b></div>
+        <div class="top-actions">
+          <span class="live-pill"><i></i> SYSTEM LIVE</span>
+          <button class="icon-button" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">◐</button>
+          <div class="avatar" title="InboxGuard">IG</div>
+        </div>
+      </header>
+
+      <div class="page-wrap">
+        <section class="hero" id="overview">
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="eyebrow-line"></span> INTELLIGENT MESSAGE SECURITY</div>
+            <h1>A clearer inbox<br>starts <span>right here.</span></h1>
+            <p>Analyze messages with a machine learning model trained to spot spam—so you can focus on what matters.</p>
+            <a class="button button-primary hero-button" href="#detector">Analyze a message <span>↗</span></a>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="orb orb-one"></div><div class="orb orb-two"></div>
+            <div class="mail-card">
+              <div class="mail-card-top"><span class="mail-icon">✉</span><span class="mail-dots">•••</span></div>
+              <div class="mail-line long"></div><div class="mail-line medium"></div><div class="mail-line short"></div>
+              <div class="shield"><span>✓</span></div>
+              <div class="safe-label"><span></span> THREAT BLOCKED</div>
+            </div>
+            <div class="floating-tag">✦ &nbsp; AI protected</div>
+          </div>
+        </section>
+
+        <section class="stats-grid" aria-label="Prediction statistics">
+          <article class="stat-card"><div class="stat-heading"><span>Total analyzed</span><span class="stat-icon indigo">▤</span></div><div class="stat-number" id="stat-total">—</div><div class="stat-caption">Messages checked</div></article>
+          <article class="stat-card"><div class="stat-heading"><span>Spam detected</span><span class="stat-icon red">⊘</span></div><div class="stat-number" id="stat-spam">—</div><div class="stat-caption"><span class="dot-red"></span> Flagged as unwanted</div></article>
+          <article class="stat-card"><div class="stat-heading"><span>Legitimate</span><span class="stat-icon green">✓</span></div><div class="stat-number" id="stat-ham">—</div><div class="stat-caption"><span class="dot-green"></span> Messages kept clear</div></article>
+          <article class="stat-card"><div class="stat-heading"><span>Spam rate</span><span class="stat-icon amber">↗</span></div><div class="stat-number" id="stat-rate">—<small>%</small></div><div class="stat-caption">Share of analyzed messages</div></article>
+        </section>
+
+        <section class="detector-section section-block" id="detector">
+          <div class="section-heading">
+            <div><div class="eyebrow">MESSAGE ANALYSIS</div><h2>Check a message</h2><p>Paste an email or text message to see what the model finds.</p></div>
+            <span class="privacy-note"><span>⌑</span> Processed locally on this server</span>
+          </div>
+          <div class="detector-grid">
+            <div class="compose-card panel">
+              <div class="field-label-row"><label for="subject-input">SUBJECT <span>(OPTIONAL)</span></label><span id="char-count">0 / 10,000</span></div>
+              <input id="subject-input" class="subject-input" type="text" maxlength="500" placeholder="Add an email subject…">
+              <div class="field-label-row body-label"><label for="message-input">MESSAGE CONTENT</label><button class="text-button" id="paste-button" type="button">▣ Paste</button></div>
+              <textarea id="message-input" maxlength="10000" placeholder="Paste your email or message here…"></textarea>
+              <div class="example-row"><span>Try an example:</span><button class="example-chip" data-example="spam">Spam</button><button class="example-chip" data-example="ham">Legitimate</button></div>
+              <div class="compose-actions"><button class="button button-quiet" id="clear-button" type="button">Clear</button><button class="button button-primary" id="analyze-button" type="button"><span class="button-label">Analyze message</span><span class="button-arrow">→</span></button></div>
+              <div class="error-message" id="error-message" role="alert"></div>
+            </div>
+            <div class="result-card panel" id="result-card">
+              <div class="result-placeholder" id="result-placeholder"><div class="placeholder-icon">✳</div><h3>Your result will appear here</h3><p>Run an analysis to see the classification and model score.</p><div class="placeholder-rule"></div><div class="mini-assurance"><span>⌑</span> Your message is saved in local history.</div></div>
+              <div class="result-content hidden" id="result-content">
+                <div class="result-overline">ANALYSIS COMPLETE <span class="result-check">✓</span></div>
+                <div class="result-badge" id="result-badge"></div>
+                <h3 id="result-title"></h3><p id="result-explanation"></p>
+                <div class="score-row"><span>Model score <small>(not calibrated probability)</small></span><b id="score-value">—</b></div>
+                <div class="score-track"><div id="score-fill"></div></div>
+                <div class="result-foot">Score indicates relative model confidence and may not represent a probability.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="analytics-section section-block" id="analytics">
+          <div class="section-heading compact-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h2>Activity at a glance</h2></div><span class="section-meta">Based on saved predictions</span></div>
+          <div class="analytics-grid">
+            <article class="panel chart-panel"><div class="panel-title"><div><h3>Message breakdown</h3><p>Spam compared to legitimate messages</p></div><span class="chart-icon">◔</span></div><div class="donut-wrap"><canvas id="donut-chart" aria-label="Message breakdown chart"></canvas><div class="donut-center"><b id="chart-total">0</b><span>MESSAGES</span></div></div><div class="legend"><span><i class="legend-spam"></i>Spam <b id="legend-spam">0</b></span><span><i class="legend-ham"></i>Legitimate <b id="legend-ham">0</b></span></div></article>
+            <article class="panel chart-panel"><div class="panel-title"><div><h3>Classification volume</h3><p>Current prediction totals</p></div><span class="chart-icon">▥</span></div><div class="bar-chart" id="bar-chart" aria-label="Classification volume chart"></div><div class="bar-caption"><span>SPAM</span><span>LEGITIMATE</span></div></article>
+            <article class="panel model-card"><div class="panel-title"><div><h3>Model snapshot</h3><p>Selected from three evaluated algorithms</p></div><span class="chart-icon">✧</span></div><div class="model-name" id="snapshot-model">Loading…</div><div class="model-metrics"><div><span>Spam precision</span><b id="metric-precision">—</b></div><div><span>Spam recall</span><b id="metric-recall">—</b></div><div><span>Spam F1</span><b id="metric-f1">—</b></div></div><div class="snapshot-note">Held-out test set · fixed random seed</div></article>
+          </div>
+        </section>
+
+        <section class="history-section section-block" id="history">
+          <div class="section-heading compact-heading"><div><div class="eyebrow">RECENT ACTIVITY</div><h2>Prediction history</h2></div><div class="history-actions"><button class="button button-quiet button-small" id="export-button" type="button">↓ Export CSV</button><button class="button button-quiet button-small" id="clear-history-button" type="button">Clear history</button></div></div>
+          <div class="panel history-panel">
+            <div class="history-toolbar"><label class="search-box"><span>⌕</span><input id="history-search" type="search" placeholder="Search messages…"></label><select id="history-filter" aria-label="Filter by prediction"><option value="">All predictions</option><option value="spam">Spam</option><option value="not_spam">Legitimate</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>MESSAGE</th><th>CLASSIFICATION</th><th>MODEL SCORE</th><th>DATE ANALYZED</th></tr></thead><tbody id="history-body"><tr><td class="empty-state" colspan="4">No messages analyzed yet. Your results will show here.</td></tr></tbody></table></div>
+            <div class="history-footer" id="history-count">Showing 0 predictions</div>
+          </div>
+        </section>
+
+        <section class="about-section section-block" id="about">
+          <div class="about-banner">
+            <div><div class="eyebrow">BEHIND THE MODEL</div><h2>How InboxGuard works</h2><p>A transparent, end-to-end machine learning workflow built for learning and practical experimentation.</p></div>
+            <div class="workflow"><div><span>01</span><b>Clean</b><small>Normalize message text</small></div><i>→</i><div><span>02</span><b>Vectorize</b><small>TF-IDF text features</small></div><i>→</i><div><span>03</span><b>Classify</b><small>Compare 3 algorithms</small></div></div>
+          </div>
+          <div class="tech-row"><span>BUILT WITH</span><b>Python</b><b>Flask</b><b>scikit-learn</b><b>TF-IDF</b><b>SQLite</b></div>
+        </section>
+        <footer class="page-footer"><span>InboxGuard <span class="footer-dot">·</span> Email Spam Detection System</span><span>Educational project · UCI SMS Spam Collection</span></footer>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
