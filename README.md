@@ -137,6 +137,10 @@ monitoring; this educational project is not production-hardened.
 
 The generated model charts are in `reports\email\figures\`. To view the interface, start the app and visit the landing page, then create a local account to access the dashboard, scanner, bulk scanner, history, and about pages. Screenshots below use a temporary local account and synthetic messages; do not capture real account or email content.
 
+Download the [Email Scanner Risk Guide](./reports/Email_Scanner_Risk_Guide.pdf)
+for the risk-score bands, point breakdown, classification notes, and synthetic
+low, medium, high, and critical examples scored with the bundled model.
+
 The following captures were made with a temporary local account and synthetic sample content:
 
 ![InboxGuard landing page](./reports/screenshots/landing.png)
