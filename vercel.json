@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{.github/**,.pytest_cache/**,data/**,instance/**,reports/**,scripts/**,tests/**,models/spam_classifier.joblib,requirements-dev.txt,requirements-deploy.txt,*.md,render.yaml}"
+    }
+  }
+}

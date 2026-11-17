@@ -58,6 +58,12 @@ def test_public_pages_auth_and_model_info(app):
     assert client.get("/api/model-info").get_json()["model_name"] == "Test email model"
 
 
+def test_static_assets_are_served_from_public_directory(app):
+    response = app.test_client().get("/static/js/security.js")
+    assert response.status_code == 200
+    assert b"loadDashboard();" in response.data
+
+
 def test_authenticated_header_does_not_expose_account_email(client):
     response = client.get("/dashboard")
     assert response.status_code == 200
@@ -225,12 +231,42 @@ def test_state_changes_require_csrf_outside_test_mode(tmp_path):
 
 def test_deployment_database_and_secure_cookie_environment(monkeypatch, tmp_path):
     database_path = tmp_path / "persistent" / "history.sqlite3"
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("INBOXGUARD_DATABASE", str(database_path))
     monkeypatch.setenv("INBOXGUARD_SECURE_COOKIES", "true")
     app = create_app({"TESTING": True, "EMAIL_MODEL": StubEmailModel()})
     assert app.config["DATABASE"] == str(database_path)
     assert app.config["SESSION_COOKIE_SECURE"] is True
     assert database_path.is_file()
+
+
+def test_vercel_requires_database_and_stable_secret(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("INBOXGUARD_DATABASE", raising=False)
+    monkeypatch.delenv("INBOXGUARD_SECRET_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        create_app()
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@db.example/app")
+    with pytest.raises(RuntimeError, match="INBOXGUARD_SECRET_KEY"):
+        create_app()
+
+
+def test_vercel_uses_persistent_database_and_secure_cookie(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("INBOXGUARD_DATABASE", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@db.example/app")
+    monkeypatch.setenv("INBOXGUARD_SECRET_KEY", "a-stable-test-secret")
+    monkeypatch.setattr("backend.init_db", lambda database_url: None)
+    app = create_app(
+        {
+            "TESTING": True,
+            "EMAIL_MODEL": StubEmailModel(),
+        }
+    )
+    assert app.config["DATABASE"] == "postgresql://user:pass@db.example/app"
+    assert app.config["SESSION_COOKIE_SECURE"] is True
 
 
 def test_missing_email_model_returns_explicit_service_unavailable(tmp_path):

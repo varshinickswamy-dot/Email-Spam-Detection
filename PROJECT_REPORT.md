@@ -47,16 +47,16 @@ The system does not fetch URLs, follow redirects, open attachments, or connect t
 - **Frontend:** Flask/Jinja pages, responsive custom CSS, browser-side JSON and CSV interactions, persistent theme selection.
 - **Backend:** Flask routes for registration/login, dashboard, single/raw/bulk scans, model details, history, export, and statistics.
 - **Model service:** Loads only the email-specific joblib pipeline for email scans. It never silently falls back to the SMS model.
-- **Database:** SQLite account and scan records, with an additive migration that preserves earlier SMS history. Queries scope records to the signed-in user.
+- **Database:** SQLite account and scan records locally, or PostgreSQL when deployed to Vercel. SQLite migrations preserve earlier SMS history; prediction queries scope records to the signed-in user.
 - **Security controls:** Werkzeug password hashing, session cookies, CSRF token checks, input and upload limits, no automatic URL requests, and in-memory upload processing.
 
-This project is intended for local educational use, not as a production mail gateway. It has no external email integration, password recovery, email verification, or deployment-grade rate limiting.
+This project is intended for educational use, not as a production mail gateway. It has no external email integration, password recovery, email verification, or deployment-grade rate limiting.
 
 ## 6. Installation and execution
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe run.py
 ```
@@ -81,7 +81,7 @@ For the Linear SVM candidate comparison at natural test prevalence, train-only u
 - The SpamAssassin corpus is dated and only provides spam/legitimate labels.
 - No sender reputation, DNS, authentication-header, attachment sandbox, or redirect-chain inspection is performed.
 - Rule-based risk scoring is transparent but does not estimate probability of compromise.
-- Local SQLite storage keeps submitted scan text until cleared; sensitive data should not be uploaded.
+- Local SQLite or hosted PostgreSQL storage keeps submitted scan text until cleared; sensitive data should not be uploaded.
 - Additional recent, consented email corpora and time-based external validation are needed before operational use.
 - Production deployment would require HTTPS, account recovery/verification, rate limiting, retention controls, model monitoring, and security review.
 

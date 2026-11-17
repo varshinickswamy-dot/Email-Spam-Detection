@@ -10,7 +10,8 @@ InboxGuard is a local-first, educational email security web application. It comb
 - Calibrated spam score (only when the trained artifact and evaluation report are present), risk level, findings, suspicious phrases/URLs, and recommended actions.
 - Uncertainty band near the classification boundary rather than a forced confident label.
 - Bulk UTF-8 CSV analysis (maximum 5 MB and 500 messages) with batch CSV export.
-- User registration and sign-in; password hashes and account-scoped SQLite history.
+- User registration and sign-in; password hashes and account-scoped SQLite
+  history locally or PostgreSQL history on Vercel.
 - Dashboard statistics, searchable/filterable history, CSV export, and confirmed history deletion.
 - Responsive interface, persistent light/dark preference, API input limits, and CSRF protection.
 
@@ -25,7 +26,7 @@ Browser (templates + CSS + JavaScript)
              │
              ├── EmailSecurityModel ── calibrated scikit-learn email pipeline
              ├── Detection engine ──── transparent supplementary rules
-             └── SQLite ────────────── users, predictions, batch metadata
+             └── SQLite / PostgreSQL ─ users, predictions, batch metadata
 
 SpamAssassin email archives ── scripts/inspect_email_corpus.py
                                scripts/train_email_model.py
@@ -39,11 +40,11 @@ UCI SMS dataset ────────────── scripts/train_model.p
 ### Project structure
 
 ```text
-backend/                 Flask routes, SQLite, email features and detection engine
+backend/                 Flask routes, SQLite/PostgreSQL, email features and detection engine
 data/README.md            Dataset download and local training instructions
 data/raw/, data/processed/ Local-only datasets and grouped splits (Git-ignored)
 frontend/templates/       Landing, auth, dashboard, scanner, bulk, history, about
-frontend/static/          Responsive CSS and browser-side API interactions
+public/static/            Responsive CSS and browser-side API interactions
 instance/                 Local SQLite database (created at runtime)
 models/                   Separate SMS and email model artifacts
 reports/email/            Email metrics, model comparison, and SVG charts
@@ -78,7 +79,7 @@ Python 3.12 is the validated runtime. The included email model was serialized wi
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
 On this workstation, Windows Application Control blocked native NumPy DLLs installed into an isolated environment. The existing approved Anaconda Python 3.12.7 environment is therefore used through a `.venv` created with `--system-site-packages`; this reuses its installed packages without bypassing policy. On a restricted machine, use only an administrator-approved Python environment. On an unrestricted machine, use the standard isolated-install commands above.
@@ -114,21 +115,53 @@ installing dependencies. To retrain, first download the corpora as described in
 
 Open [http://127.0.0.1:5000](http://127.0.0.1:5000), create an account, and scan an email. The default Flask server binds to localhost. For stable sessions between restarts, set a private `INBOXGUARD_SECRET_KEY` environment variable; otherwise a fresh local-only key is generated at launch.
 
-## Publish the code and deploy the web app
+## Deploy the web app to Vercel
 
-The public GitHub repository contains the application, trained model artifacts,
-tests, reports, and synthetic UI screenshots. Raw corpora, derived email text
-splits, local databases, and virtual environments are excluded. The included
-GitHub Actions workflow runs the test suite on pushes and pull requests.
+The Flask application is configured for Vercel's Python Functions runtime:
 
-For a hosted Flask app, Render is the prepared option: connect this repository
-to Render and apply the included `render.yaml` Blueprint. It configures Gunicorn,
-HTTPS-only session cookies, a generated secret key, and a persistent disk for
-SQLite. A persistent disk requires a paid Render service and may incur charges;
-review current pricing before creating it. GitHub Pages cannot host this Flask
-backend or its SQLite database.
+1. Create a managed PostgreSQL database and copy its connection URL.
+2. In Vercel, choose **Add New → Project** and import
+   `varshinickswamy-dot/Email-Spam-Detection`. Keep the root directory as `.`.
+3. Before deploying, add `DATABASE_URL` with the PostgreSQL URL and
+   `INBOXGUARD_SECRET_KEY` with a newly generated secret under **Settings →
+   Environment Variables**. Generate a secret locally with
+   `py -c "import secrets; print(secrets.token_urlsafe(48))"`; do not put it in
+   source control or share it.
+4. Leave the detected Python framework/build settings unchanged and deploy.
+   Vercel uses `app.py`, `requirements.txt`, `.python-version`, `vercel.json`,
+   and `public/static/`; do not set a Gunicorn start command or use `render.yaml`.
 
-The hosted app stores scan content in its SQLite history. Do not submit private
+Vercel Functions do not provide durable local disk storage. Before the first
+deployment, create a managed PostgreSQL database (use its pooled connection URL
+if the provider offers one) and set these Vercel project environment variables
+for Production, and Preview if you plan to use preview deployments:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection URL from your database provider |
+| `INBOXGUARD_SECRET_KEY` | A new, long, randomly generated secret kept only in Vercel |
+
+The app creates the required account, history, and batch tables in that
+PostgreSQL database on startup. Vercel forces secure session cookies. Never
+commit database URLs or secret values to GitHub. Local SQLite data is not
+automatically copied to PostgreSQL; the cloud database starts with new accounts
+and empty scan history.
+
+Raw corpora, derived email text splits, local databases, and virtual environments
+are excluded from the public repository. The included GitHub Actions workflow
+runs tests on pushes and pull requests. The bundled email model is included.
+
+For local development, the app continues to use SQLite by default. To run it on
+Render instead, the existing `render.yaml` and `requirements-deploy.txt` remain
+available. Render and Vercel use different startup and persistence settings.
+
+After deploying, test registration and sign-in, then scan an email, run a bulk
+CSV scan, and confirm history remains after a new deployment. Review Vercel
+function logs and your database provider's connection limits if requests fail.
+The Vercel project deploys the Flask app as a function; no separate build output
+directory is required.
+
+The hosted app stores scan content in its database history. Do not submit private
 or confidential email. Before public use, add appropriate rate limiting, account
 verification/recovery, retention controls, a privacy notice, and security
 monitoring; this educational project is not production-hardened.

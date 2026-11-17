@@ -1,7 +1,6 @@
 import csv
 import io
 import os
-import sqlite3
 import re
 import secrets
 from functools import wraps
@@ -17,6 +16,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -31,6 +31,8 @@ from backend.database import (
     get_statistics,
     get_user_by_id,
     get_user_by_email,
+    is_integrity_error,
+    is_postgresql_database,
     init_db,
     record_scan,
     verify_user,
@@ -47,30 +49,50 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$")
 
 
 def create_app(test_config=None):
+    is_vercel = os.environ.get("VERCEL") == "1"
+    database_url = (
+        os.environ.get("DATABASE_URL")
+        or os.environ.get("INBOXGUARD_DATABASE")
+    )
+    secret_key = os.environ.get("INBOXGUARD_SECRET_KEY")
+    if is_vercel and not database_url:
+        raise RuntimeError(
+            "Set DATABASE_URL to a persistent PostgreSQL database before deploying to Vercel."
+        )
+    if is_vercel and not secret_key:
+        raise RuntimeError(
+            "Set INBOXGUARD_SECRET_KEY in the Vercel project environment variables."
+        )
     app = Flask(
         __name__,
         template_folder=str(ROOT_DIR / "frontend" / "templates"),
-        static_folder=str(ROOT_DIR / "frontend" / "static"),
+        static_folder=None,
     )
     app.config.from_mapping(
-        DATABASE=os.environ.get(
-            "INBOXGUARD_DATABASE",
-            str(ROOT_DIR / "instance" / "spam_history.sqlite3"),
-        ),
+        DATABASE=database_url or str(ROOT_DIR / "instance" / "spam_history.sqlite3"),
         EMAIL_MODEL_PATH=str(ROOT_DIR / "models" / "email_security_model.joblib"),
-        SECRET_KEY=os.environ.get("INBOXGUARD_SECRET_KEY") or secrets.token_hex(32),
+        SECRET_KEY=secret_key or secrets.token_hex(32),
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.environ.get(
-            "INBOXGUARD_SECURE_COOKIES", ""
-        ).lower()
+        SESSION_COOKIE_SECURE=is_vercel
+        or os.environ.get("INBOXGUARD_SECURE_COOKIES", "").lower()
         in {"1", "true", "yes"},
     )
     if test_config:
         app.config.update(test_config)
 
-    Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
+    def serve_static(filename):
+        return send_from_directory(ROOT_DIR / "public" / "static", filename)
+
+    app.add_url_rule(
+        "/static/<path:filename>",
+        endpoint="static",
+        view_func=serve_static,
+    )
+
+    if not is_postgresql_database(app.config["DATABASE"]):
+        Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     init_db(app.config["DATABASE"])
     email_model = app.config.get("EMAIL_MODEL")
     if email_model is None:
@@ -240,7 +262,9 @@ def create_app(test_config=None):
             else:
                 try:
                     user_id = create_user(app.config["DATABASE"], email, password)
-                except sqlite3.IntegrityError:
+                except Exception as error:
+                    if not is_integrity_error(error):
+                        raise
                     error = "An account with that email already exists."
                     return render_template("register.html", error=error)
                 session.clear()
