@@ -598,7 +598,13 @@ def create_app(test_config=None):
             password = request.form.get("password", "")
             confirmation = request.form.get("confirm_password", "")
             if not mail_is_configured():
-                error = "Email delivery is not configured. Registration is temporarily unavailable."
+                error = (
+                    "Account creation is temporarily unavailable because email "
+                    "delivery is not configured. The site owner must add "
+                    "INBOXGUARD_SMTP_HOST, INBOXGUARD_SMTP_USER, and "
+                    "INBOXGUARD_SMTP_PASSWORD in Vercel Settings > Environment "
+                    "Variables, then redeploy."
+                )
             elif not EMAIL_RE.fullmatch(email):
                 error = "Enter a valid email address."
             elif len(password) < 12:

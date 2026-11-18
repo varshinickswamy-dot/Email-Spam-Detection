@@ -243,7 +243,8 @@ def test_registration_fails_explicitly_without_mail_configuration(tmp_path):
         },
     )
     assert response.status_code == 200
-    assert b"Email delivery is not configured" in response.data
+    assert b"Account creation is temporarily unavailable" in response.data
+    assert b"INBOXGUARD_SMTP_PASSWORD" in response.data
     assert (
         database.get_user_by_email(
             app.config["DATABASE"], "no-mail@example.org"

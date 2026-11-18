@@ -180,6 +180,12 @@ variables for Production and Preview separately if both environments are
 enabled. Verification links expire after 24 hours; password-reset links expire
 after one hour and can only be used once.
 
+If registration reports that email delivery is not configured, verify that
+`INBOXGUARD_SMTP_HOST`, `INBOXGUARD_SMTP_USER`, and
+`INBOXGUARD_SMTP_PASSWORD` are set for the active Vercel environment, then
+redeploy. The SMTP password must be a Gmail app password, not the account
+password.
+
 Raw corpora, derived email text splits, local databases, and virtual environments
 are excluded from the public repository. The included GitHub Actions workflow
 runs tests on pushes and pull requests. The bundled email model is included.
