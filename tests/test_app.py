@@ -252,7 +252,9 @@ def test_registration_fails_explicitly_without_mail_configuration(tmp_path):
     )
 
 
-def test_first_request_prunes_scan_history_older_than_retention(tmp_path):
+def test_first_request_prunes_scan_history_older_than_retention(
+    tmp_path, monkeypatch
+):
     database_path = str(tmp_path / "retention.sqlite3")
     app = create_app(
         {
@@ -285,6 +287,7 @@ def test_first_request_prunes_scan_history_older_than_retention(tmp_path):
             "UPDATE users SET created_at = ? WHERE id = ?",
             (old, expired_user_id),
         )
+    monkeypatch.setattr("backend.time.monotonic", lambda: 10.0)
     app.test_client().get("/api/history")
     items = database.get_history(database_path, user_id)
     assert [item["text"] for item in items] == ["recent message"]

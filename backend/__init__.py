@@ -255,17 +255,23 @@ def create_app(test_config=None):
             f"hours:\n\n{link}\n\nIf you did not request this, you can ignore this message.",
         )
 
-    last_cleanup = [0.0]
+    last_cleanup = [None]
     cleanup_lock = threading.Lock()
 
     @app.before_request
     def purge_expired_records():
         now_monotonic = time.monotonic()
-        if now_monotonic - last_cleanup[0] < 3600:
+        if (
+            last_cleanup[0] is not None
+            and now_monotonic - last_cleanup[0] < 3600
+        ):
             return None
         with cleanup_lock:
             now_monotonic = time.monotonic()
-            if now_monotonic - last_cleanup[0] >= 3600:
+            if (
+                last_cleanup[0] is None
+                or now_monotonic - last_cleanup[0] >= 3600
+            ):
                 now = datetime.now(timezone.utc)
                 prune_expired_data(
                     app.config["DATABASE"],
