@@ -149,7 +149,7 @@ function renderScanResult(result) {
     : '<li class="muted-copy">No URLs detected.</li>';
   container.innerHTML = `
     <div class="result-topline"><span>ANALYSIS COMPLETE</span><span class="classification-pill ${escapeHTML(result.classification)}">${escapeHTML(result.classification_label)}</span></div>
-    <div class="risk-heading"><div><span class="eyebrow">RISK LEVEL</span><h2 class="risk-text ${escapeHTML(result.risk_level)}">${escapeHTML(result.risk_level.toUpperCase())}</h2></div><div class="risk-score"><b>${escapeHTML(result.risk_score)}</b><small>heuristic risk score / 100</small></div></div>
+    <div class="risk-heading"><div><span class="eyebrow">RISK LEVEL</span><h2 class="risk-text ${escapeHTML(result.risk_level)}">${escapeHTML(result.risk_level.toUpperCase())}</h2></div><div class="risk-score"><b>${escapeHTML(result.risk_score)}</b><small>Risk score / 100: Low 0-19, Medium 20-44, High 45-74, Critical 75-100</small></div></div>
     <div class="score-block"><div><span>${probabilityLabel}</span><b>${percent(result.spam_probability)}</b></div><div class="score-track"><i style="width:${Math.max(0, Math.min(100, result.spam_probability * 100))}%"></i></div><small>Decision threshold: ${percent(result.classification_threshold)} · review band: ${percent(result.uncertainty_band[0])}–${percent(result.uncertainty_band[1])}. This is not a probability of compromise.</small></div>
     <div class="finding-section"><h3>Why it was flagged</h3><ul>${reasonItems}</ul></div>
     <div class="finding-section"><h3>Suspicious phrases</h3><div class="phrase-list">${phraseItems}</div></div>

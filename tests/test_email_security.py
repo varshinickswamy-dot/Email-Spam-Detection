@@ -30,6 +30,26 @@ def test_bundled_email_model_loads_and_scores_email():
     assert 0 <= model.threshold <= 1
 
 
+def test_benign_schedule_email_is_low_risk_even_when_classification_is_uncertain():
+    model = EmailSecurityModel(
+        Path(__file__).resolve().parents[1] / "models" / "email_security_model.joblib"
+    )
+    record = {
+        "sender": "Sam <sam@example.org>",
+        "subject": "Meeting moved to 2 PM",
+        "body": "Hi Sam, our team meeting is now at 2 PM in the usual room. Thanks!",
+    }
+
+    result = analyze_email(
+        record,
+        model.predict_spam_probability(record),
+        model.threshold,
+    )
+
+    assert result["risk_level"] == "low"
+    assert result["risk_score"] < 20
+
+
 def test_html_parser_ignores_script_content_and_extracts_anchor_text():
     text, anchors = parse_html(
         '<p>Review your account</p><script>window.secret = "ignored";</script>'

@@ -53,6 +53,11 @@ For the Linear SVM candidate comparison on the same natural-prevalence test set,
 
 The 0.26 decision threshold is tuned only on a development holdout, not the test set. The detection layer labels scores within 0.12 of its configured decision boundary as `uncertain`. Other UI categories—`phishing_suspicious` and `promotional`—are supplementary rule-assisted categories, not trained classes from the email corpus. False alarms and missed detections remain possible.
 
+The separate rule-based risk score is shown as `low` (0-19), `medium` (20-44),
+`high` (45-74), or `critical` (75-100). This risk level is independent of the
+spam classification: for example, a message can be classified as `uncertain`
+while still having low risk.
+
 ## Artifacts and visualizations
 
 Training creates:
