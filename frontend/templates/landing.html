@@ -3,14 +3,14 @@
 {% block public_content %}
 <header class="public-nav">
   <a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">I</span><span>inbox<span>guard</span></span></a>
-  <div><button class="icon-button" id="theme-toggle" aria-label="Toggle color theme">◐</button><a class="text-link" href="{{ url_for('login') }}">Sign in</a><a class="button button-primary" href="{{ url_for('register') }}">Create workspace</a></div>
+  <div><button class="icon-button" id="theme-toggle" aria-label="Toggle color theme">◐</button><a class="text-link" href="{{ url_for('privacy') }}">Privacy</a><a class="text-link" href="{{ url_for('login') }}">Sign in</a><a class="button button-primary" href="{{ url_for('register') }}">Create workspace</a></div>
 </header>
 <main class="landing">
   <section class="landing-hero">
     <div class="hero-copy">
       <span class="eyebrow"><i></i> EMAIL THREAT ANALYSIS</span>
       <h1>Know what’s hiding<br>in your <em>inbox.</em></h1>
-      <p>Inspect suspicious email with a dedicated machine-learning model, transparent risk signals, and safe link analysis—without opening links or sending mail anywhere.</p>
+      <p>Inspect suspicious email with a dedicated machine-learning model, transparent risk signals, and safe link analysis—without opening submitted links or emailing scan content.</p>
       <div class="hero-buttons"><a class="button button-primary" href="{{ url_for('register') }}">Get started <span>→</span></a><a class="button button-secondary" href="#how-it-works">How it works</a></div>
       <div class="hero-trust"><span>✓</span> Local-first &nbsp;·&nbsp; No link visits &nbsp;·&nbsp; Clear reasons</div>
     </div>
@@ -28,6 +28,6 @@
     </div>
   </section>
   <section class="workflow-banner"><div><span class="eyebrow">HOW IT WORKS</span><h2>Analyze. Understand. Act safely.</h2></div><div class="workflow-steps"><span>01 &nbsp; Parse the message</span><b>→</b><span>02 &nbsp; Score with the model</span><b>→</b><span>03 &nbsp; Review indicators</span></div></section>
-  <footer class="public-footer"><span>InboxGuard · Educational email-security project</span><span>Analysis is advisory—not a guarantee of safety.</span></footer>
+  <footer class="public-footer"><span>InboxGuard · Educational email-security project · <a href="{{ url_for('privacy') }}">Privacy notice</a></span><span>Analysis is advisory—not a guarantee of safety.</span></footer>
 </main>
 {% endblock %}

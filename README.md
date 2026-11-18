@@ -1,6 +1,6 @@
 # InboxGuard — Email Security Analysis
 
-InboxGuard is a local-first, educational email security web application. It combines an email-specific supervised machine-learning model with transparent secondary indicators for suspicious wording, sender impersonation, and URL patterns. It includes account login, isolated scan history, individual and CSV bulk scanning, analytics, model reports, and light/dark themes.
+InboxGuard is a local-first, educational email security web application. It combines an email-specific supervised machine-learning model with transparent secondary indicators for suspicious wording, sender impersonation, and URL patterns. It includes verified accounts, isolated scan history, individual and CSV bulk scanning, analytics, model reports, and light/dark themes.
 
 > **Scope and safety:** The email model is trained on Apache SpamAssassin emails. The original UCI SMS model and data remain separate and are not used to make email predictions. The SpamAssassin labels are only `spam` and `legitimate`; phishing and promotional labels in the UI are rule-assisted assessments, not independently trained classes. URL analysis is offline: the app never visits submitted links. Results are advisory and cannot guarantee that an email is safe.
 
@@ -13,9 +13,12 @@ InboxGuard is a local-first, educational email security web application. It comb
   including the scanned message text.
 - User registration and sign-in; password hashes and account-scoped SQLite
   history locally or PostgreSQL history on Vercel.
+- Email verification and one-time password recovery links delivered over
+  operator-configured Gmail SMTP.
 - Dashboard statistics, searchable/filterable history, CSV export including
   scanned message text, and confirmed history deletion.
-- Responsive interface, persistent light/dark preference, API input limits, and CSRF protection.
+- Automatic 30-day scan-history cleanup, a public privacy notice, database-backed
+  rate limits, structured security events, API input limits, and CSRF protection.
 
 ## Architecture
 
@@ -45,7 +48,7 @@ UCI SMS dataset ────────────── scripts/train_model.p
 backend/                 Flask routes, SQLite/PostgreSQL, email features and detection engine
 data/README.md            Dataset download and local training instructions
 data/raw/, data/processed/ Local-only datasets and grouped splits (Git-ignored)
-frontend/templates/       Landing, auth, dashboard, scanner, bulk, history, about
+frontend/templates/       Landing, auth/recovery, privacy, dashboard, scanner, bulk, history, about
 public/static/            Responsive CSS and browser-side API interactions
 instance/                 Local SQLite database (created at runtime)
 models/                   Separate SMS and email model artifacts
@@ -109,13 +112,28 @@ Training writes `models\email_security_model.joblib`, `data\processed\email_*.cs
 
 The trained email artifact is included, so scanning works immediately after
 installing dependencies. To retrain, first download the corpora as described in
-[data/README.md](./data/README.md). Then start the app:
+[data/README.md](./data/README.md).
+
+Configure SMTP environment variables before creating accounts; registration
+requires an email verification message. For Gmail, use `smtp.gmail.com` on port
+`587` and a Google app password (not your account password). Never commit or
+share the app password. Then run the app:
 
 ```powershell
+$env:INBOXGUARD_SMTP_HOST = "smtp.gmail.com"
+$env:INBOXGUARD_SMTP_PORT = "587"
+$env:INBOXGUARD_SMTP_USER = "your-address@gmail.com"
+$env:INBOXGUARD_SMTP_PASSWORD = "your-google-app-password"
+$env:INBOXGUARD_SMTP_FROM = $env:INBOXGUARD_SMTP_USER
+$env:INBOXGUARD_PUBLIC_URL = "http://127.0.0.1:5000"
 .\.venv\Scripts\python.exe run.py
 ```
 
-Open [http://127.0.0.1:5000](http://127.0.0.1:5000), create an account, and scan an email. The default Flask server binds to localhost. For stable sessions between restarts, set a private `INBOXGUARD_SECRET_KEY` environment variable; otherwise a fresh local-only key is generated at launch.
+Open [http://127.0.0.1:5000](http://127.0.0.1:5000), create an account, and
+verify the address from your inbox before signing in. The default Flask server
+binds to localhost. For stable sessions between restarts, set a private
+`INBOXGUARD_SECRET_KEY` environment variable; otherwise a fresh local-only key
+is generated at launch.
 
 ## Deploy the web app to Vercel
 
@@ -124,9 +142,9 @@ The Flask application is configured for Vercel's Python Functions runtime:
 1. Create a managed PostgreSQL database and copy its connection URL.
 2. In Vercel, choose **Add New → Project** and import
    `varshinickswamy-dot/Email-Spam-Detection`. Keep the root directory as `.`.
-3. Before deploying, add `DATABASE_URL` with the PostgreSQL URL and
-   `INBOXGUARD_SECRET_KEY` with a newly generated secret under **Settings →
-   Environment Variables**. Generate a secret locally with
+3. Before deploying, add `DATABASE_URL` with the PostgreSQL URL,
+   `INBOXGUARD_SECRET_KEY` with a newly generated secret, and the SMTP settings
+   below under **Settings → Environment Variables**. Generate a secret locally with
    `py -c "import secrets; print(secrets.token_urlsafe(48))"`; do not put it in
    source control or share it.
 4. Leave the detected Python framework/build settings unchanged and deploy.
@@ -142,12 +160,25 @@ for Production, and Preview if you plan to use preview deployments:
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection URL from your database provider |
 | `INBOXGUARD_SECRET_KEY` | A new, long, randomly generated secret kept only in Vercel |
+| `INBOXGUARD_SMTP_HOST` | `smtp.gmail.com` |
+| `INBOXGUARD_SMTP_PORT` | `587` (STARTTLS) |
+| `INBOXGUARD_SMTP_USER` | Gmail address used to send account mail |
+| `INBOXGUARD_SMTP_PASSWORD` | Google app password stored as a secret |
+| `INBOXGUARD_SMTP_FROM` | Sender address; normally the Gmail address above |
+| `INBOXGUARD_PUBLIC_URL` | Optional canonical HTTPS URL; Vercel/Render URLs are detected automatically |
+| `INBOXGUARD_RETENTION_DAYS` | Optional history retention period; defaults to `30` |
 
-The app creates the required account, history, and batch tables in that
+The app creates the required account, token, rate-limit, history, and batch tables in that
 PostgreSQL database on startup. Vercel forces secure session cookies. Never
 commit database URLs or secret values to GitHub. Local SQLite data is not
 automatically copied to PostgreSQL; the cloud database starts with new accounts
 and empty scan history.
+
+Create a Google app password for the sending account and store it only in the
+hosting provider's encrypted environment-variable settings. Configure the
+variables for Production and Preview separately if both environments are
+enabled. Verification links expire after 24 hours; password-reset links expire
+after one hour and can only be used once.
 
 Raw corpora, derived email text splits, local databases, and virtual environments
 are excluded from the public repository. The included GitHub Actions workflow
@@ -157,16 +188,30 @@ For local development, the app continues to use SQLite by default. To run it on
 Render instead, the existing `render.yaml` and `requirements-deploy.txt` remain
 available. Render and Vercel use different startup and persistence settings.
 
-After deploying, test registration and sign-in, then scan an email, run a bulk
-CSV scan, and confirm history remains after a new deployment. Review Vercel
-function logs and your database provider's connection limits if requests fail.
+After deploying, test registration, email verification, password recovery, and
+sign-in, then scan an email and run a bulk CSV scan. Scan history is automatically
+deleted after 30 days by default; `INBOXGUARD_RETENTION_DAYS` can change this
+period. History can also be cleared manually or by permanently deleting the
+account from the Account page. Registration is limited to 5
+attempts per IP per hour, failed sign-ins to 10 per IP per 15 minutes, and email
+scans to 5 requests per account per minute. Rate-limit counters are stored in the
+application database and are shared across instances.
+
+Security events (sign-in outcomes, verification/recovery events, rate limiting,
+CSRF failures, history deletion, exports, account deletion, and scan activity) are emitted as structured
+JSON to the `inboxguard.security` application logger. Events do not include email
+addresses, message contents, or raw IP addresses. Review the hosting platform's
+logs and set their retention/alerting policies; no third-party monitoring service
+is configured by default. Review Vercel function logs and your database
+provider's connection limits if requests fail.
 The Vercel project deploys the Flask app as a function; no separate build output
 directory is required.
 
-The hosted app stores scan content in its database history. Do not submit private
-or confidential email. Before public use, add appropriate rate limiting, account
-verification/recovery, retention controls, a privacy notice, and security
-monitoring; this educational project is not production-hardened.
+The hosted app stores scan content in its database history for the configured
+retention period. Do not submit private or confidential email. The privacy notice
+at `/privacy` describes stored data, deletion, SMTP delivery, cookies, and
+pseudonymous security logs. This educational project is not a substitute for a
+formal privacy/legal review or a production security assessment.
 
 ## Screenshots
 
@@ -195,7 +240,11 @@ All scan, model-information, history, and analytics endpoints require a signed-i
 |---|---|---|
 | `GET` | `/` | Public landing page |
 | `GET/POST` | `/login`, `/register` | Local account access |
-| `GET` | `/dashboard`, `/scanner`, `/bulk`, `/history`, `/about` | Authenticated application pages |
+| `GET` | `/dashboard`, `/scanner`, `/bulk`, `/history`, `/about`, `/account` | Authenticated application pages |
+| `GET` | `/privacy` | Public privacy notice |
+| `GET/POST` | `/verify-email`, `/reset-password` | Confirm one-time account tokens |
+| `GET/POST` | `/forgot-password`, `/resend-verification` | Request account email links |
+| `POST` | `/account` | Delete the signed-in account and associated records |
 | `POST` | `/api/scan` | Analyze `{"subject":"...", "body":"...", "sender":"...", "html_body":"..."}` |
 | `POST` | `/api/scan/raw` | Parse and analyze `{"raw_email":"From: ...\nSubject: ...\n\n..."}` |
 | `POST` | `/api/bulk` | Multipart CSV upload |
@@ -228,7 +277,17 @@ Tests use a temporary database and an explicit stub model for route behavior; th
 
 ## Privacy and limitations
 
-Account credentials are locally hashed. Scan text is stored in the local SQLite database for history until the user clears it; bulk CSV files are processed in memory and are not retained as uploaded files. Avoid submitting confidential mail. The application has no email verification, password recovery, production rate limiting, or external mail integrations. The SpamAssassin dataset is dated and does not provide verified phishing, malicious-attachment, or promotional labels. A safe classification is not a security guarantee.
+Account passwords are hashed and new accounts must verify their email address.
+Password recovery uses expiring, single-use links. Scan text and results are
+stored in the configured SQLite or PostgreSQL database for 30 days by default,
+and users can clear scan history sooner or delete the entire account and its
+records; bulk CSV files are processed in memory
+and are not retained as uploaded files. SMTP sends account verification and
+recovery links only, never scan content. Security events use a keyed,
+pseudonymous client identifier; hosting providers may retain platform logs under
+their own policies. Avoid submitting confidential mail. The SpamAssassin dataset
+is dated and does not provide verified phishing, malicious-attachment, or
+promotional labels. A safe classification is not a security guarantee.
 
 ## Dataset credits
 

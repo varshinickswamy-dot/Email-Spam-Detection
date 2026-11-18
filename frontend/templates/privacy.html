@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Privacy notice{% endblock %}
+{% macro notice_content() %}
+<section class="about-grid">
+  <article class="surface about-card wide"><span class="eyebrow">PRIVACY NOTICE</span><h1>How InboxGuard handles your data</h1><p>InboxGuard is an educational email-analysis service. Do not submit confidential email or information you are not authorized to share.</p></article>
+  <article class="surface about-card"><h2>Information stored</h2><p>Account email addresses and password hashes are stored in the application database. Email text, subjects, sender fields, scan results, and timestamps are stored in account-scoped scan history. Uploaded CSV files are processed in memory and are not retained as files.</p></article>
+  <article class="surface about-card"><h2>Retention and deletion</h2><p>Scan history is automatically deleted after {{ retention_days }} days. Unverified accounts older than the same period are removed. You can also clear your history from the app at any time. The Account page lets you permanently delete your account and its associated records.</p></article>
+  <article class="surface about-card"><h2>Email and security data</h2><p>Verification and password-recovery messages are sent through the operator-configured Gmail SMTP account. Only the account email address and one-time link are sent; scan content is not included. Security logs record event type, outcome, account ID when known, and a keyed pseudonymous client identifier—not email contents or raw IP addresses. Hosting providers may retain platform logs under their own policies.</p></article>
+  <article class="surface about-card"><h2>Cookies and link analysis</h2><p>InboxGuard uses an HTTP-only session cookie to keep you signed in and a CSRF token to protect state-changing requests. Submitted links are inspected as text only and are never visited by the application.</p></article>
+  <article class="surface about-card wide"><h2>Questions</h2><p>This educational project does not provide a public support contact. For a self-hosted deployment, the operator is responsible for configuring SMTP, database access, log retention, and any privacy obligations applicable to their use.</p><a class="inline-link" href="{{ url_for('home') }}">Return to InboxGuard <span>→</span></a></article>
+</section>
+{% endmacro %}
+{% block content %}{{ notice_content() }}{% endblock %}
+{% block public_content %}
+<header class="public-nav"><a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">I</span><span>inbox<span>guard</span></span></a><a class="text-link" href="{{ url_for('home') }}">Back to InboxGuard</a></header>
+<main class="landing">{{ notice_content() }}</main>
+{% endblock %}

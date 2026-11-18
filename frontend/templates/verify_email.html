@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Verify email{% endblock %}
+{% block public_content %}
+<main class="auth-wrap">
+  <a class="brand auth-brand" href="{{ url_for('home') }}"><span class="brand-mark">I</span><span>inbox<span>guard</span></span></a>
+  <section class="auth-card"><span class="eyebrow">ACCOUNT VERIFICATION</span><h1>Verify your email</h1>
+    {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+    {% if verified %}
+    <div class="form-success" role="status">Your email is verified. You can now sign in.</div>
+    <div class="auth-switch"><a href="{{ url_for('login') }}">Sign in</a></div>
+    {% else %}
+    <p>Confirm this one-time link to activate your InboxGuard account.</p>
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" id="account-token" name="token" value="{{ token or '' }}">
+      <button class="button button-primary full-button" type="submit">Verify email</button>
+    </form>
+    {% endif %}
+    <div class="auth-switch"><a href="{{ url_for('resend_verification') }}">Request another link</a></div>
+  </section>
+  <p class="auth-note"><a href="{{ url_for('privacy') }}">Privacy notice</a></p>
+</main>
+{% endblock %}

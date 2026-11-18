@@ -1,8 +1,18 @@
 import csv
+import hashlib
+import hmac
 import io
+import json
+import logging
 import os
 import re
 import secrets
+import smtplib
+import ssl
+import threading
+import time
+from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from functools import wraps
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -24,17 +34,24 @@ from werkzeug.exceptions import BadRequest
 
 from backend.database import (
     clear_history,
+    consume_account_token,
+    consume_rate_limit,
     create_scan_batch,
     create_user,
+    delete_user,
     get_batch_history,
     get_history,
     get_statistics,
     get_user_by_id,
     get_user_by_email,
+    mark_email_verified,
     is_integrity_error,
     is_postgresql_database,
     init_db,
+    prune_expired_data,
     record_scan,
+    set_user_password,
+    store_account_token,
     verify_user,
 )
 from backend.detection_engine import analyze_email
@@ -46,6 +63,11 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 MAX_EMAIL_CHARS = 50_000
 MAX_BULK_ROWS = 500
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$")
+SECURITY_LOGGER = logging.getLogger("inboxguard.security")
+SECURITY_LOGGER.setLevel(logging.INFO)
+SECURITY_LOGGER.propagate = False
+if not SECURITY_LOGGER.handlers:
+    SECURITY_LOGGER.addHandler(logging.StreamHandler())
 
 
 def create_app(test_config=None):
@@ -55,6 +77,14 @@ def create_app(test_config=None):
         or os.environ.get("INBOXGUARD_DATABASE")
     )
     secret_key = os.environ.get("INBOXGUARD_SECRET_KEY")
+    public_url = (
+        os.environ.get("INBOXGUARD_PUBLIC_URL")
+        or (
+            f"https://{os.environ['VERCEL_URL']}"
+            if os.environ.get("VERCEL_URL")
+            else os.environ.get("RENDER_EXTERNAL_URL")
+        )
+    )
     if is_vercel and not database_url:
         raise RuntimeError(
             "Set DATABASE_URL to a persistent PostgreSQL database before deploying to Vercel."
@@ -72,6 +102,13 @@ def create_app(test_config=None):
         DATABASE=database_url or str(ROOT_DIR / "instance" / "spam_history.sqlite3"),
         EMAIL_MODEL_PATH=str(ROOT_DIR / "models" / "email_security_model.joblib"),
         SECRET_KEY=secret_key or secrets.token_hex(32),
+        PUBLIC_URL=public_url,
+        SMTP_HOST=os.environ.get("INBOXGUARD_SMTP_HOST", ""),
+        SMTP_PORT=int(os.environ.get("INBOXGUARD_SMTP_PORT", "587")),
+        SMTP_USER=os.environ.get("INBOXGUARD_SMTP_USER", ""),
+        SMTP_PASSWORD=os.environ.get("INBOXGUARD_SMTP_PASSWORD", ""),
+        SMTP_FROM=os.environ.get("INBOXGUARD_SMTP_FROM", ""),
+        RETENTION_DAYS=int(os.environ.get("INBOXGUARD_RETENTION_DAYS", "30")),
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -81,6 +118,8 @@ def create_app(test_config=None):
     )
     if test_config:
         app.config.update(test_config)
+    if app.config["RETENTION_DAYS"] < 1:
+        raise ValueError("INBOXGUARD_RETENTION_DAYS must be at least 1.")
 
     def serve_static(filename):
         return send_from_directory(ROOT_DIR / "public" / "static", filename)
@@ -107,9 +146,145 @@ def create_app(test_config=None):
         if not user_id:
             return None
         user = get_user_by_id(app.config["DATABASE"], user_id)
-        if user is None:
+        if (
+            user is None
+            or not user["email_verified"]
+            or session.get("auth_version") != user["auth_version"]
+        ):
             session.clear()
+            return None
         return user
+
+    def security_event(event, outcome, user_id=None):
+        remote_addr = request.remote_addr or ""
+        client_digest = hmac.new(
+            app.secret_key.encode(), remote_addr.encode(), hashlib.sha256
+        ).hexdigest()[:16]
+        SECURITY_LOGGER.info(
+            "%s",
+            json.dumps(
+                {
+                    "event": event,
+                    "outcome": outcome,
+                    "user_id": user_id,
+                    "client_id": client_digest,
+                },
+                separators=(",", ":"),
+            ),
+        )
+
+    def enforce_rate_limit(scope, identity, limit, window_seconds, message):
+        bucket_digest = hmac.new(
+            app.secret_key.encode(),
+            f"{scope}:{identity}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        allowed, retry_after, _ = consume_rate_limit(
+            app.config["DATABASE"],
+            bucket_digest,
+            limit,
+            window_seconds,
+            datetime.now(timezone.utc),
+        )
+        if allowed:
+            return None
+        security_event(f"rate_limit_{scope}", "rejected")
+        response = jsonify(error=message)
+        response.status_code = 429
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+
+    def mail_is_configured():
+        return bool(
+            app.config.get("EMAIL_SENDER")
+            or (
+                app.config["SMTP_HOST"]
+                and app.config["SMTP_USER"]
+                and app.config["SMTP_PASSWORD"]
+                and (app.config["SMTP_FROM"] or app.config["SMTP_USER"])
+            )
+        )
+
+    def send_account_email(recipient, subject, body):
+        custom_sender = app.config.get("EMAIL_SENDER")
+        if custom_sender:
+            custom_sender(recipient, subject, body)
+            return
+        if not mail_is_configured():
+            raise RuntimeError(
+                "Email delivery is not configured. Set the InboxGuard SMTP environment variables."
+            )
+        message = EmailMessage()
+        message["From"] = app.config["SMTP_FROM"] or app.config["SMTP_USER"]
+        message["To"] = recipient
+        message["Subject"] = subject
+        message.set_content(body)
+        context = ssl.create_default_context()
+        if app.config["SMTP_PORT"] == 465:
+            with smtplib.SMTP_SSL(
+                app.config["SMTP_HOST"], app.config["SMTP_PORT"], context=context, timeout=15
+            ) as server:
+                server.login(app.config["SMTP_USER"], app.config["SMTP_PASSWORD"])
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(
+                app.config["SMTP_HOST"], app.config["SMTP_PORT"], timeout=15
+            ) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(app.config["SMTP_USER"], app.config["SMTP_PASSWORD"])
+                server.send_message(message)
+
+    def issue_account_token(user, purpose, endpoint, subject, expires_in):
+        token = secrets.token_urlsafe(32)
+        now = datetime.now(timezone.utc)
+        store_account_token(
+            app.config["DATABASE"],
+            user["id"],
+            hashlib.sha256(token.encode("ascii")).hexdigest(),
+            purpose,
+            (now + expires_in).isoformat(timespec="seconds"),
+        )
+        root = (app.config["PUBLIC_URL"] or request.url_root).rstrip("/")
+        link = f"{root}{url_for(endpoint)}#{token}"
+        send_account_email(
+            user["email"],
+            subject,
+            f"Use this one-time link within {int(expires_in.total_seconds() // 3600)} "
+            f"hours:\n\n{link}\n\nIf you did not request this, you can ignore this message.",
+        )
+
+    last_cleanup = [0.0]
+    cleanup_lock = threading.Lock()
+
+    @app.before_request
+    def purge_expired_records():
+        now_monotonic = time.monotonic()
+        if now_monotonic - last_cleanup[0] < 3600:
+            return None
+        with cleanup_lock:
+            now_monotonic = time.monotonic()
+            if now_monotonic - last_cleanup[0] >= 3600:
+                now = datetime.now(timezone.utc)
+                prune_expired_data(
+                    app.config["DATABASE"],
+                    (now - timedelta(days=app.config["RETENTION_DAYS"])).isoformat(
+                        timespec="seconds"
+                    ),
+                    now.isoformat(timespec="seconds"),
+                    (now - timedelta(days=1)).isoformat(timespec="seconds"),
+                )
+                last_cleanup[0] = now_monotonic
+        return None
+
+    @app.after_request
+    def secure_response_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        if request.endpoint in {"verify_email", "reset_password"}:
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     def login_required(view):
         @wraps(view)
@@ -128,7 +303,22 @@ def create_app(test_config=None):
         if not token:
             token = secrets.token_urlsafe(32)
             session["csrf_token"] = token
-        return {"current_user": current_user(), "csrf_token": token}
+        return {
+            "current_user": current_user(),
+            "csrf_token": token,
+            "retention_days": app.config["RETENTION_DAYS"],
+            "public_page": request.endpoint
+            in {
+                "home",
+                "login",
+                "register",
+                "privacy",
+                "resend_verification",
+                "verify_email",
+                "forgot_password",
+                "reset_password",
+            },
+        }
 
     @app.before_request
     def protect_state_changes():
@@ -137,6 +327,7 @@ def create_app(test_config=None):
         expected = session.get("csrf_token", "")
         supplied = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token", "")
         if not expected or not secrets.compare_digest(expected, supplied):
+            security_event("csrf_validation", "rejected")
             if request.path.startswith("/api/"):
                 return jsonify(error="The request token is missing or invalid. Refresh and retry."), 400
             abort(400, description="The request token is missing or invalid. Refresh and retry.")
@@ -214,6 +405,10 @@ def create_app(test_config=None):
             return redirect(url_for("dashboard"))
         return render_template("landing.html")
 
+    @app.get("/privacy")
+    def privacy():
+        return render_template("privacy.html")
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if current_user():
@@ -224,11 +419,26 @@ def create_app(test_config=None):
             password = request.form.get("password", "")
             user = verify_user(app.config["DATABASE"], email, password)
             if user is None:
+                limited = enforce_rate_limit(
+                    "login",
+                    request.remote_addr or "unknown",
+                    10,
+                    15 * 60,
+                    "Too many failed sign-in attempts. Try again later.",
+                )
+                if limited:
+                    return limited
                 error = "Email or password is incorrect."
+                security_event("login", "failure")
+            elif not user["email_verified"]:
+                error = "Verify your email before signing in. You can request a new verification link below."
+                security_event("login", "unverified", user["id"])
             else:
                 session.clear()
                 session["user_id"] = user["id"]
+                session["auth_version"] = user["auth_version"]
                 session["csrf_token"] = secrets.token_urlsafe(32)
+                security_event("login", "success", user["id"])
                 target = request.args.get("next", "")
                 parsed_target = urlsplit(target)
                 if (
@@ -240,16 +450,150 @@ def create_app(test_config=None):
                 return redirect(target)
         return render_template("login.html", error=error)
 
+    @app.route("/resend-verification", methods=["GET", "POST"])
+    def resend_verification():
+        if request.method == "POST":
+            limited = enforce_rate_limit(
+                "resend_verification",
+                request.remote_addr or "unknown",
+                5,
+                60 * 60,
+                "Too many requests. Try again later.",
+            )
+            if limited:
+                return limited
+            email = request.form.get("email", "").strip().lower()
+            user = get_user_by_email(app.config["DATABASE"], email)
+            if user and not user["email_verified"]:
+                try:
+                    issue_account_token(
+                        user,
+                        "verify_email",
+                        "verify_email",
+                        "Verify your InboxGuard account",
+                        timedelta(hours=24),
+                    )
+                except (OSError, RuntimeError, smtplib.SMTPException):
+                    security_event("verification_email", "delivery_failed", user["id"])
+                else:
+                    security_event("verification_email", "sent", user["id"])
+            return render_template("resend_verification.html", sent=True)
+        return render_template("resend_verification.html")
+
+    @app.route("/verify-email", methods=["GET", "POST"])
+    def verify_email():
+        token = (
+            request.args.get("token", "")
+            if request.method == "GET"
+            else request.form.get("token", "")
+        )
+        if request.method == "GET":
+            return render_template("verify_email.html", token=token)
+        user_id = consume_account_token(
+            app.config["DATABASE"],
+            hashlib.sha256(token.encode("utf-8")).hexdigest(),
+            "verify_email",
+            datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        )
+        if user_id is None:
+            security_event("email_verification", "invalid_token")
+            return render_template(
+                "verify_email.html",
+                token="",
+                error="This verification link is invalid or has expired.",
+            ), 400
+        mark_email_verified(app.config["DATABASE"], user_id)
+        security_event("email_verification", "success", user_id)
+        return render_template("verify_email.html", token="", verified=True)
+
+    @app.route("/forgot-password", methods=["GET", "POST"])
+    def forgot_password():
+        if request.method == "POST":
+            limited = enforce_rate_limit(
+                "password_reset_request",
+                request.remote_addr or "unknown",
+                5,
+                60 * 60,
+                "Too many requests. Try again later.",
+            )
+            if limited:
+                return limited
+            email = request.form.get("email", "").strip().lower()
+            user = get_user_by_email(app.config["DATABASE"], email)
+            if user and user["email_verified"]:
+                try:
+                    issue_account_token(
+                        user,
+                        "reset_password",
+                        "reset_password",
+                        "Reset your InboxGuard password",
+                        timedelta(hours=1),
+                    )
+                except (OSError, RuntimeError, smtplib.SMTPException):
+                    security_event("password_reset_email", "delivery_failed", user["id"])
+                else:
+                    security_event("password_reset_email", "sent", user["id"])
+            return render_template("forgot_password.html", sent=True)
+        return render_template("forgot_password.html")
+
+    @app.route("/reset-password", methods=["GET", "POST"])
+    def reset_password():
+        token = (
+            request.args.get("token", "")
+            if request.method == "GET"
+            else request.form.get("token", "")
+        )
+        error = None
+        if request.method == "POST":
+            password = request.form.get("password", "")
+            confirmation = request.form.get("confirm_password", "")
+            if len(password) < 12:
+                error = "Use a password with at least 12 characters."
+            elif len(password) > 256:
+                error = "Password must be 256 characters or fewer."
+            elif password != confirmation:
+                error = "The password confirmation does not match."
+            else:
+                user_id = consume_account_token(
+                    app.config["DATABASE"],
+                    hashlib.sha256(token.encode("utf-8")).hexdigest(),
+                    "reset_password",
+                    datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                )
+                if user_id is None:
+                    security_event("password_reset", "invalid_token")
+                    return render_template(
+                        "reset_password.html",
+                        token="",
+                        error="This password-reset link is invalid or has expired.",
+                    ), 400
+                else:
+                    set_user_password(app.config["DATABASE"], user_id, password)
+                    security_event("password_reset", "success", user_id)
+                    return render_template("reset_password.html", token="", reset=True)
+        return render_template("reset_password.html", token=token, error=error)
+
     @app.route("/register", methods=["GET", "POST"])
     def register():
         if current_user():
             return redirect(url_for("dashboard"))
         error = None
         if request.method == "POST":
+            limited = enforce_rate_limit(
+                "registration",
+                request.remote_addr or "unknown",
+                5,
+                60 * 60,
+                "Too many registration attempts. Try again later.",
+            )
+            if limited:
+                return limited
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
             confirmation = request.form.get("confirm_password", "")
-            if not EMAIL_RE.fullmatch(email):
+            if not mail_is_configured():
+                error = "Email delivery is not configured. Registration is temporarily unavailable."
+            elif not EMAIL_RE.fullmatch(email):
                 error = "Enter a valid email address."
             elif len(password) < 12:
                 error = "Use a password with at least 12 characters."
@@ -267,15 +611,29 @@ def create_app(test_config=None):
                         raise
                     error = "An account with that email already exists."
                     return render_template("register.html", error=error)
-                session.clear()
-                session["user_id"] = user_id
-                session["csrf_token"] = secrets.token_urlsafe(32)
-                return redirect(url_for("dashboard"))
+                user = get_user_by_id(app.config["DATABASE"], user_id)
+                try:
+                    issue_account_token(
+                        user,
+                        "verify_email",
+                        "verify_email",
+                        "Verify your InboxGuard account",
+                        timedelta(hours=24),
+                    )
+                except (OSError, RuntimeError, smtplib.SMTPException):
+                    security_event("registration", "verification_delivery_failed", user_id)
+                    return render_template(
+                        "register.html",
+                        error="Your account was created, but the verification email could not be sent. Request another link later.",
+                    ), 503
+                security_event("registration", "verification_sent", user_id)
+                return render_template("register.html", sent=True)
         return render_template("register.html", error=error)
 
     @app.post("/logout")
     @login_required
     def logout():
+        security_event("logout", "success", session.get("user_id"))
         session.clear()
         return redirect(url_for("home"))
 
@@ -283,6 +641,33 @@ def create_app(test_config=None):
     @login_required
     def dashboard():
         return render_template("dashboard.html")
+
+    @app.route("/account", methods=["GET", "POST"])
+    @login_required
+    def account():
+        user = current_user()
+        if request.method == "POST":
+            confirmation = request.form.get("confirm_delete", "")
+            password = request.form.get("password", "")
+            verified_user = verify_user(
+                app.config["DATABASE"], user["email"], password
+            )
+            if (
+                confirmation != "DELETE"
+                or verified_user is None
+                or verified_user["id"] != user["id"]
+            ):
+                return render_template(
+                    "account.html",
+                    user=user,
+                    error="Confirm deletion by typing DELETE and entering your current password.",
+                ), 400
+            user_id = user["id"]
+            delete_user(app.config["DATABASE"], user_id)
+            security_event("account_delete", "success", user_id)
+            session.clear()
+            return redirect(url_for("home"))
+        return render_template("account.html", user=user)
 
     @app.get("/scanner")
     @login_required
@@ -307,6 +692,15 @@ def create_app(test_config=None):
     @app.post("/api/scan")
     @login_required
     def scan():
+        limited = enforce_rate_limit(
+            "email_scan",
+            str(current_user()["id"]),
+            5,
+            60,
+            "Too many scans. Try again in a minute.",
+        )
+        if limited:
+            return limited
         unavailable = email_model_unavailable_response()
         if unavailable:
             return unavailable
@@ -315,11 +709,21 @@ def create_app(test_config=None):
         if error:
             return jsonify(error=error), 400
         result = scan_record(record, current_user()["id"])
+        security_event("email_scan", "success", current_user()["id"])
         return jsonify(result)
 
     @app.post("/api/scan/raw")
     @login_required
     def scan_raw():
+        limited = enforce_rate_limit(
+            "email_scan",
+            str(current_user()["id"]),
+            5,
+            60,
+            "Too many scans. Try again in a minute.",
+        )
+        if limited:
+            return limited
         unavailable = email_model_unavailable_response()
         if unavailable:
             return unavailable
@@ -334,7 +738,10 @@ def create_app(test_config=None):
         record, error = validate_email_record(parse_raw_email(raw_email))
         if error:
             return jsonify(error=error), 400
-        return jsonify(scan_record(record, current_user()["id"], scan_kind="raw_email"))
+        user_id = current_user()["id"]
+        result = scan_record(record, user_id, scan_kind="raw_email")
+        security_event("email_scan", "success", user_id)
+        return jsonify(result)
 
     @app.get("/api/model-info")
     @login_required
@@ -370,7 +777,10 @@ def create_app(test_config=None):
     @app.delete("/api/history")
     @login_required
     def delete_history():
-        return jsonify(deleted=clear_history(app.config["DATABASE"], current_user()["id"]))
+        user_id = current_user()["id"]
+        deleted = clear_history(app.config["DATABASE"], user_id)
+        security_event("history_clear", "success", user_id)
+        return jsonify(deleted=deleted)
 
     @app.get("/api/history/export")
     @login_required
@@ -404,6 +814,7 @@ def create_app(test_config=None):
                     item["created_at"],
                 )
             )
+        security_event("history_export", "success", current_user()["id"])
         return send_file(
             io.BytesIO(output.getvalue().encode("utf-8-sig")),
             mimetype="text/csv",
@@ -419,6 +830,15 @@ def create_app(test_config=None):
     @app.post("/api/bulk")
     @login_required
     def bulk_scan():
+        limited = enforce_rate_limit(
+            "email_scan",
+            str(current_user()["id"]),
+            5,
+            60,
+            "Too many scans. Try again in a minute.",
+        )
+        if limited:
+            return limited
         unavailable = email_model_unavailable_response()
         if unavailable:
             return unavailable
@@ -471,6 +891,7 @@ def create_app(test_config=None):
             scan_record(record, user_id, batch_id=batch_id, scan_kind="bulk")
             for record in records
         ]
+        security_event("bulk_email_scan", "success", user_id)
         return jsonify(
             batch_id=batch_id,
             total=len(results),
@@ -514,6 +935,7 @@ def create_app(test_config=None):
                     item["created_at"],
                 )
             )
+        security_event("bulk_export", "success", current_user()["id"])
         return send_file(
             io.BytesIO(output.getvalue().encode("utf-8-sig")),
             mimetype="text/csv",

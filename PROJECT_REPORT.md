@@ -2,7 +2,7 @@
 
 ## Abstract
 
-InboxGuard is a local-first email-analysis web application for identifying spam and surfacing suspicious email indicators. Its email model is trained on the Apache SpamAssassin Public Corpus, kept separate from the pre-existing UCI SMS Spam Collection model. The Flask application supports account-isolated history, email and CSV scans, analytics, URL inspection without network requests, and an uncertainty-aware result view.
+InboxGuard is a local-first email-analysis web application for identifying spam and surfacing suspicious email indicators. Its email model is trained on the Apache SpamAssassin Public Corpus, kept separate from the pre-existing UCI SMS Spam Collection model. The Flask application supports verified accounts, account-isolated and automatically retained history, email and CSV scans, analytics, URL inspection without network requests, and an uncertainty-aware result view.
 
 ## 1. Problem statement and objectives
 
@@ -40,14 +40,14 @@ The measured metrics are generated at training time in `reports/email/email_eval
 
 The trained spam model is the primary content classifier. A separate detection layer inspects credential and payment wording, urgency, attachments mentioned in text, suspicious URL structures, mismatched link text, and sender-brand signals. It reports a rule-based risk score separately from the model score. Categories such as phishing, promotional, and uncertain are secondary assessments; the SpamAssassin source labels do not supervise those categories. Scores around the configured decision boundary are shown as uncertain.
 
-The system does not fetch URLs, follow redirects, open attachments, or connect to a mail server. Link findings are based only on submitted content.
+The analysis engine does not fetch URLs, follow redirects, open attachments, or send submitted email content to a mail server. Link findings are based only on submitted content; account verification and recovery links are sent separately through operator-configured SMTP.
 
 ## 5. Application architecture
 
 - **Frontend:** Flask/Jinja pages, responsive custom CSS, browser-side JSON and CSV interactions, persistent theme selection.
-- **Backend:** Flask routes for registration/login, dashboard, single/raw/bulk scans, model details, history, export, and statistics.
+- **Backend:** Flask routes for email verification and password recovery, account settings, dashboard, single/raw/bulk scans, model details, history, export, and statistics.
 - **Model service:** Loads only the email-specific joblib pipeline for email scans. It never silently falls back to the SMS model.
-- **Database:** SQLite account and scan records locally, or PostgreSQL when deployed to Vercel. SQLite migrations preserve earlier SMS history; prediction queries scope records to the signed-in user.
+- **Database:** SQLite account, token, rate-limit, and scan records locally, or PostgreSQL when deployed to Vercel. SQLite migrations preserve earlier SMS history; prediction queries scope records to the signed-in user.
 - **Security controls:** Werkzeug password hashing, session cookies, CSRF token checks, input and upload limits, no automatic URL requests, and in-memory upload processing.
 
 This project is intended for educational use, not as a production mail gateway. It has no external email integration, password recovery, email verification, or deployment-grade rate limiting.
@@ -61,7 +61,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe run.py
 ```
 
-The trained email artifact is included, so scanning works without downloading the corpus or retraining. To reproduce training, download the datasets and follow `data/README.md`, then run `scripts\inspect_email_corpus.py` and `scripts\train_email_model.py`. Open `http://127.0.0.1:5000` and create a local account. Application startup without the email model remains explicit: email scan endpoints return HTTP 503 rather than using a demo model or the SMS artifact.
+The trained email artifact is included, so scanning works without downloading the corpus or retraining. To reproduce training, download the datasets and follow `data/README.md`, then run `scripts\inspect_email_corpus.py` and `scripts\train_email_model.py`. Configure Gmail SMTP environment variables, open `http://127.0.0.1:5000`, create an account, and verify its email. Application startup without the email model remains explicit: email scan endpoints return HTTP 503 rather than using a demo model or the SMS artifact.
 
 Raw corpora and derived email text splits are excluded from Git; see
 `data/README.md` for dataset sources and local setup.
@@ -70,7 +70,7 @@ Raw corpora and derived email text splits are excluded from Git; see
 
 The exact model comparison, final held-out metrics, calibration Brier score, class distribution, and split counts are written to `reports/email/email_evaluation_metrics.json`. The SVG figures include dataset distribution, algorithm comparison, test metrics, confusion matrix, ROC curve, and precision-recall curve.
 
-`pytest -q` covers registration and login routes, per-user history isolation, input validation, raw MIME parsing, bulk upload/export, additive database migration, URL indicators, uncertainty behavior, duplicate loading, and group-aware train-only undersampling. Route tests use a test-only stub estimator and do not claim model performance.
+`pytest -q` covers verified registration, password recovery, account deletion, per-user history isolation, retention cleanup, rate limits, input validation, raw MIME parsing, bulk upload/export, additive database migration, URL indicators, uncertainty behavior, duplicate loading, and group-aware train-only undersampling. Route tests use a test-only stub estimator and do not claim model performance.
 
 The current trained artifact selected the original-imbalance Linear SVM, with a threshold of 0.26 selected on a separate development holdout. On 1,168 untouched test messages (820 legitimate, 348 spam), the deployed calibrated pipeline achieved 98.29% accuracy, 96.33% spam precision, 97.99% spam recall, 97.15% spam F1, 99.87% ROC-AUC, 99.71% PR-AUC, and a 0.0129 Brier score. Its confusion matrix was TN=807, FP=13, FN=7, TP=341. The development threshold holdout achieved 98.54% precision, 97.12% recall, and 2 false positives among 328 legitimate messages; these are threshold-selection metrics, not final test results.
 
@@ -83,7 +83,7 @@ For the Linear SVM candidate comparison at natural test prevalence, train-only u
 - Rule-based risk scoring is transparent but does not estimate probability of compromise.
 - Local SQLite or hosted PostgreSQL storage keeps submitted scan text until cleared; sensitive data should not be uploaded.
 - Additional recent, consented email corpora and time-based external validation are needed before operational use.
-- Production deployment would require HTTPS, account recovery/verification, rate limiting, retention controls, model monitoring, and security review.
+- Production deployment still requires an appropriate privacy/legal review, hosting-log retention and alerting policies, operational monitoring of email/database delivery, and a security review.
 
 ## 9. Viva questions and answers
 

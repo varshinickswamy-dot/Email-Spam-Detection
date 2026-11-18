@@ -19,3 +19,5 @@ services:
         value: /var/data/spam_history.sqlite3
       - key: INBOXGUARD_SECURE_COOKIES
         value: "true"
+      - key: INBOXGUARD_RETENTION_DAYS
+        value: "30"

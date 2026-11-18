@@ -1,5 +1,7 @@
+import sqlite3
 import sys
 import types
+from datetime import datetime, timedelta, timezone
 
 from backend import database
 
@@ -62,3 +64,48 @@ def test_postgresql_schema_and_insert_ids_use_postgresql_syntax(monkeypatch):
     insert_query, insert_parameters = connection.statements[-1]
     assert "RETURNING id" in insert_query
     assert insert_parameters[0] == "user@example.org"
+
+
+def test_existing_sqlite_users_migrate_as_verified(tmp_path):
+    database_path = str(tmp_path / "legacy.sqlite3")
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT, "
+            "password_hash TEXT, created_at TEXT)"
+        )
+        connection.execute(
+            "INSERT INTO users VALUES (1, 'legacy@example.org', 'hash', '2020-01-01')"
+        )
+
+    database.init_db(database_path)
+    user = database.get_user_by_id(database_path, 1)
+
+    assert user["email_verified"] == 1
+    assert user["auth_version"] == 0
+
+
+def test_database_rate_limit_uses_a_fixed_window(tmp_path):
+    database_path = str(tmp_path / "limits.sqlite3")
+    database.init_db(database_path)
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    assert database.consume_rate_limit(database_path, "bucket", 2, 60, now) == (
+        True,
+        60,
+        1,
+    )
+    assert database.consume_rate_limit(database_path, "bucket", 2, 60, now) == (
+        True,
+        60,
+        2,
+    )
+    allowed, retry_after, attempts = database.consume_rate_limit(
+        database_path, "bucket", 2, 60, now
+    )
+    assert (allowed, retry_after, attempts) == (False, 60, 3)
+
+    allowed, _, attempts = database.consume_rate_limit(
+        database_path, "bucket", 2, 60, now + timedelta(seconds=61)
+    )
+    assert allowed is True
+    assert attempts == 1

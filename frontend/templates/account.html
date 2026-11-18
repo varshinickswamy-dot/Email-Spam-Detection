@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Account settings{% endblock %}
+{% block breadcrumb %}Account{% endblock %}
+{% block content %}
+<header class="page-title"><div><span class="eyebrow">ACCOUNT SETTINGS</span><h1>Your account</h1><p>{{ user.email }}</p></div></header>
+<section class="surface about-card">
+  <h2>Delete your account</h2>
+  <p>This permanently deletes your account, scan history, batch records, and outstanding account links. This action cannot be undone.</p>
+  {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" class="auth-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Current password<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+    <label>Type DELETE to confirm<input name="confirm_delete" type="text" autocomplete="off" required></label>
+    <button class="button button-danger" type="submit">Delete account and data</button>
+  </form>
+</section>
+{% endblock %}

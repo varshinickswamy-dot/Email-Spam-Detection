@@ -1,9 +1,13 @@
 import csv
 import io
+import sqlite3
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 import pytest
 
 from backend import create_app
+from backend import database
 
 
 class StubEmailModel:
@@ -20,13 +24,23 @@ class StubEmailModel:
 
 @pytest.fixture()
 def app(tmp_path):
-    return create_app(
+    sent_messages = []
+    app = create_app(
         {
             "TESTING": True,
             "DATABASE": str(tmp_path / "history.sqlite3"),
             "EMAIL_MODEL": StubEmailModel(),
+            "EMAIL_SENDER": lambda _recipient, _subject, _body: sent_messages.append(
+                {
+                    "recipient": _recipient,
+                    "subject": _subject,
+                    "body": _body,
+                }
+            ),
         }
     )
+    app.extensions["sent_messages"] = sent_messages
+    return app
 
 
 @pytest.fixture()
@@ -45,7 +59,17 @@ def register(client, email, password="secure-demo-password-123"):
             "confirm_password": password,
         },
     )
-    assert response.status_code == 302
+    assert response.status_code == 200
+    sent_message = client.application.extensions["sent_messages"][-1]
+    link = sent_message["body"].splitlines()[2]
+    token = urlsplit(link).fragment
+    verified = client.post("/verify-email", data={"token": token})
+    assert verified.status_code == 200
+    assert b"Your email is verified" in verified.data
+    signed_in = client.post(
+        "/login", data={"email": email, "password": password}
+    )
+    assert signed_in.status_code == 302
     return client
 
 
@@ -53,10 +77,218 @@ def test_public_pages_auth_and_model_info(app):
     client = app.test_client()
     assert client.get("/").status_code == 200
     assert client.get("/login").status_code == 200
+    assert client.get("/privacy").status_code == 200
     assert client.get("/dashboard").status_code == 302
     assert client.get("/api/model-info").status_code == 401
     register(client, "reader@example.org")
     assert client.get("/api/model-info").get_json()["model_name"] == "Test email model"
+
+
+def test_registration_requires_one_time_email_verification(app):
+    client = app.test_client()
+    response = client.post(
+        "/register",
+        data={
+            "email": "verify@example.org",
+            "password": "secure-demo-password-123",
+            "confirm_password": "secure-demo-password-123",
+        },
+    )
+    assert response.status_code == 200
+    assert b"Check your inbox" in response.data
+    assert client.get("/dashboard").status_code == 302
+    login = client.post(
+        "/login",
+        data={"email": "verify@example.org", "password": "secure-demo-password-123"},
+    )
+    assert b"Verify your email" in login.data
+
+    message = app.extensions["sent_messages"][-1]
+    token = urlsplit(message["body"].splitlines()[2]).fragment
+    assert client.get("/verify-email").status_code == 200
+    verified = client.post("/verify-email", data={"token": token})
+    assert verified.status_code == 200
+    assert b"Your email is verified" in verified.data
+    assert client.post("/verify-email", data={"token": token}).status_code == 400
+    assert client.post(
+        "/login",
+        data={"email": "verify@example.org", "password": "secure-demo-password-123"},
+    ).status_code == 302
+
+
+def test_password_recovery_is_generic_one_time_and_revokes_sessions(client, app):
+    client.post(
+        "/login",
+        data={"email": "analyst@example.org", "password": "secure-demo-password-123"},
+    )
+    client.post("/forgot-password", data={"email": "analyst@example.org"})
+    assert b"If a verified account matches" in client.post(
+        "/forgot-password", data={"email": "unknown@example.org"}
+    ).data
+    sent_message = app.extensions["sent_messages"][-1]
+    token = urlsplit(sent_message["body"].splitlines()[2]).fragment
+    assert client.get("/reset-password").status_code == 200
+    reset = client.post(
+        "/reset-password",
+        data={
+            "token": token,
+            "password": "another-secure-password-456",
+            "confirm_password": "another-secure-password-456",
+        },
+    )
+    assert reset.status_code == 200
+    assert b"Your password has been updated" in reset.data
+    assert client.get("/dashboard").status_code == 302
+    assert client.post(
+        "/reset-password",
+        data={
+            "token": token,
+            "password": "third-secure-password-789",
+            "confirm_password": "third-secure-password-789",
+        },
+    ).status_code == 400
+    assert client.post(
+        "/login",
+        data={"email": "analyst@example.org", "password": "another-secure-password-456"},
+    ).status_code == 302
+
+
+def test_account_deletion_requires_password_and_removes_associated_data(client, app):
+    client.post(
+        "/login",
+        data={"email": "analyst@example.org", "password": "secure-demo-password-123"},
+    )
+    client.post("/api/scan", json={"body": "Saved message"})
+    user = database.get_user_by_email(
+        app.config["DATABASE"], "analyst@example.org"
+    )
+    failed = client.post(
+        "/account",
+        data={"password": "wrong-password", "confirm_delete": "DELETE"},
+    )
+    assert failed.status_code == 400
+    assert database.get_history(app.config["DATABASE"], user["id"])
+
+    deleted = client.post(
+        "/account",
+        data={
+            "password": "secure-demo-password-123",
+            "confirm_delete": "DELETE",
+        },
+    )
+    assert deleted.status_code == 302
+    assert database.get_user_by_id(app.config["DATABASE"], user["id"]) is None
+    assert database.get_history(app.config["DATABASE"], user["id"]) == []
+    assert client.get("/api/history").status_code == 401
+
+
+def test_registration_and_scan_rate_limits(app):
+    client = app.test_client()
+    registration = {
+        "password": "secure-demo-password-123",
+        "confirm_password": "secure-demo-password-123",
+    }
+    for index in range(5):
+        response = client.post(
+            "/register",
+            data={**registration, "email": f"limit-{index}@example.org"},
+        )
+        assert response.status_code == 200
+    limited_registration = client.post(
+        "/register",
+        data={**registration, "email": "limit-six@example.org"},
+    )
+    assert limited_registration.status_code == 429
+    assert int(limited_registration.headers["Retry-After"]) > 0
+
+    scan_client = app.test_client()
+    scan_client.environ_base["REMOTE_ADDR"] = "198.51.100.10"
+    register(scan_client, "scanner@example.org")
+    for _ in range(5):
+        assert scan_client.post("/api/scan", json={"body": "Hello"}).status_code == 200
+    assert scan_client.post("/api/scan", json={"body": "Hello"}).status_code == 429
+
+
+def test_failed_sign_in_rate_limit_is_per_ip(app):
+    client = app.test_client()
+    for _ in range(10):
+        response = client.post(
+            "/login",
+            data={"email": "unknown@example.org", "password": "wrong-password"},
+        )
+        assert response.status_code == 200
+    limited = client.post(
+        "/login",
+        data={"email": "unknown@example.org", "password": "wrong-password"},
+    )
+    assert limited.status_code == 429
+    assert int(limited.headers["Retry-After"]) > 0
+
+
+def test_registration_fails_explicitly_without_mail_configuration(tmp_path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "DATABASE": str(tmp_path / "no-mail.sqlite3"),
+            "EMAIL_MODEL": StubEmailModel(),
+        }
+    )
+    client = app.test_client()
+    response = client.post(
+        "/register",
+        data={
+            "email": "no-mail@example.org",
+            "password": "secure-demo-password-123",
+            "confirm_password": "secure-demo-password-123",
+        },
+    )
+    assert response.status_code == 200
+    assert b"Email delivery is not configured" in response.data
+    assert (
+        database.get_user_by_email(
+            app.config["DATABASE"], "no-mail@example.org"
+        )
+        is None
+    )
+
+
+def test_first_request_prunes_scan_history_older_than_retention(tmp_path):
+    database_path = str(tmp_path / "retention.sqlite3")
+    app = create_app(
+        {
+            "TESTING": True,
+            "DATABASE": database_path,
+            "EMAIL_MODEL": StubEmailModel(),
+            "RETENTION_DAYS": 30,
+        }
+    )
+    user_id = database.create_user(
+        database_path, "retention@example.org", "secure-demo-password-123"
+    )
+    expired_user_id = database.create_user(
+        database_path, "expired@example.org", "secure-demo-password-123"
+    )
+    recent = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    old = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat(
+        timespec="seconds"
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.executemany(
+            "INSERT INTO predictions (text, label, confidence, created_at, user_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [
+                ("old message", "not_spam", 0.1, old, user_id),
+                ("recent message", "not_spam", 0.1, recent, user_id),
+            ],
+        )
+        connection.execute(
+            "UPDATE users SET created_at = ? WHERE id = ?",
+            (old, expired_user_id),
+        )
+    app.test_client().get("/api/history")
+    items = database.get_history(database_path, user_id)
+    assert [item["text"] for item in items] == ["recent message"]
+    assert database.get_user_by_id(database_path, expired_user_id) is None
 
 
 def test_static_assets_are_served_from_public_directory(app):
@@ -228,6 +460,7 @@ def test_state_changes_require_csrf_outside_test_mode(tmp_path):
             "TESTING": False,
             "DATABASE": str(tmp_path / "csrf.sqlite3"),
             "EMAIL_MODEL": StubEmailModel(),
+            "EMAIL_SENDER": lambda recipient, subject, body: None,
             "SECRET_KEY": "test-secret",
         }
     )
@@ -241,7 +474,7 @@ def test_state_changes_require_csrf_outside_test_mode(tmp_path):
         "confirm_password": "secure-demo-password-123",
     }
     assert client.post("/register", data=form).status_code == 400
-    assert client.post("/register", data={**form, "csrf_token": token}).status_code == 302
+    assert client.post("/register", data={**form, "csrf_token": token}).status_code == 200
     assert client.post("/logout").status_code == 400
 
 
@@ -286,13 +519,22 @@ def test_vercel_uses_persistent_database_and_secure_cookie(monkeypatch):
 
 
 def test_missing_email_model_returns_explicit_service_unavailable(tmp_path):
+    sent_messages = []
     unavailable_app = create_app(
         {
             "TESTING": True,
             "DATABASE": str(tmp_path / "missing-model.sqlite3"),
             "EMAIL_MODEL_PATH": str(tmp_path / "not-trained.joblib"),
+            "EMAIL_SENDER": lambda _recipient, _subject, _body: sent_messages.append(
+                {
+                    "recipient": _recipient,
+                    "subject": _subject,
+                    "body": _body,
+                }
+            ),
         }
     )
+    unavailable_app.extensions["sent_messages"] = sent_messages
     client = unavailable_app.test_client()
     register(client, "no-model@example.org")
     response = client.post("/api/scan", json={"body": "Message"})
@@ -303,9 +545,10 @@ def test_missing_email_model_returns_explicit_service_unavailable(tmp_path):
 def test_history_export_neutralizes_spreadsheet_formulas(client):
     client.post(
         "/api/scan",
-        json={"subject": "=HYPERLINK(\"https://example.test\")", "body": "=2+2"},
+        json={"subject": "=HYPERLINK(\"https://example.test\")", "body": "A message"},
     )
+    client.post("/api/scan", json={"body": "=2+2"})
     response = client.get("/api/history/export")
     assert b"'=HYPERLINK" in response.data
-    assert b"',=2+2" not in response.data
-    assert b"'=2+2" in response.data
+    rows = list(csv.reader(io.StringIO(response.data.decode("utf-8-sig"), newline="")))
+    assert any(row[3] == "'=2+2" for row in rows[1:])

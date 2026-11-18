@@ -1,6 +1,11 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const csrfToken = $('meta[name="csrf-token"]')?.content || "";
 const themeKey = "inboxguard-theme";
+const accountToken = $("#account-token");
+if (accountToken && window.location.hash.length > 1) {
+  accountToken.value = window.location.hash.slice(1);
+  window.history.replaceState(null, "", window.location.pathname);
+}
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({

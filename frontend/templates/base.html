@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/security.css') }}">
 </head>
 <body>
-  {% if current_user %}
+  {% if current_user and not public_page %}
   <div class="shell">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="{{ url_for('dashboard') }}"><span class="brand-mark">I</span><span>inbox<span>guard</span></span></a>
@@ -22,9 +22,11 @@
         <a href="{{ url_for('bulk_scanner') }}" class="{% if request.endpoint == 'bulk_scanner' %}active{% endif %}"><span>▤</span> Bulk scan</a>
         <a href="{{ url_for('history_page') }}" class="{% if request.endpoint == 'history_page' %}active{% endif %}"><span>◷</span> Scan history</a>
         <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}"><span>ⓘ</span> About & model</a>
+        <a href="{{ url_for('account') }}" class="{% if request.endpoint == 'account' %}active{% endif %}"><span>⚙</span> Account</a>
       </nav>
       <div class="sidebar-bottom">
         <div class="privacy-card"><span class="privacy-icon">⌑</span><div><b>Private by design</b><small>Scans stay in this local app.</small></div></div>
+        <a class="inline-link" href="{{ url_for('privacy') }}">Privacy notice</a>
         <form action="{{ url_for('logout') }}" method="post">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="logout-button" type="submit"><span>↪</span> Sign out</button>
