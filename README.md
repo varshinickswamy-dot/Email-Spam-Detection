@@ -9,10 +9,12 @@ InboxGuard is a local-first, educational email security web application. It comb
 - Email scanning by sender, subject, body, optional HTML, or pasted raw MIME email.
 - Calibrated spam score (only when the trained artifact and evaluation report are present), risk level, findings, suspicious phrases/URLs, and recommended actions.
 - Uncertainty band near the classification boundary rather than a forced confident label.
-- Bulk UTF-8 CSV analysis (maximum 5 MB and 500 messages) with batch CSV export.
+- Bulk UTF-8 CSV analysis (maximum 5 MB and 500 messages) with batch CSV export
+  including the scanned message text.
 - User registration and sign-in; password hashes and account-scoped SQLite
   history locally or PostgreSQL history on Vercel.
-- Dashboard statistics, searchable/filterable history, CSV export, and confirmed history deletion.
+- Dashboard statistics, searchable/filterable history, CSV export including
+  scanned message text, and confirmed history deletion.
 - Responsive interface, persistent light/dark preference, API input limits, and CSRF protection.
 
 ## Architecture

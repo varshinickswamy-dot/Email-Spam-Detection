@@ -1,3 +1,4 @@
+import csv
 import io
 
 import pytest
@@ -117,6 +118,18 @@ def test_history_filter_search_clear_and_export(client):
     export = client.get("/api/history/export")
     assert export.status_code == 200
     assert export.mimetype == "text/csv"
+    rows = list(csv.reader(io.StringIO(export.data.decode("utf-8-sig"), newline="")))
+    assert rows[0] == [
+        "id",
+        "subject",
+        "sender",
+        "message",
+        "classification",
+        "risk_level",
+        "spam_probability",
+        "created_at",
+    ]
+    assert any("free prize cash claim" in row[3] for row in rows[1:])
     response = client.delete("/api/history")
     assert response.get_json()["deleted"] == 2
     assert client.get("/api/stats").get_json()["total"] == 0
@@ -155,6 +168,9 @@ def test_bulk_upload_and_batch_csv_export(client):
     exported = client.get(f"/api/bulk/{batch['batch_id']}/export")
     assert exported.status_code == 200
     assert exported.mimetype == "text/csv"
+    rows = list(csv.reader(io.StringIO(exported.data.decode("utf-8-sig"), newline="")))
+    assert rows[0][3] == "message"
+    assert any("Claim a prize" in row[3] for row in rows[1:])
 
 
 def test_authentication_and_history_are_user_scoped(app):
@@ -287,7 +303,9 @@ def test_missing_email_model_returns_explicit_service_unavailable(tmp_path):
 def test_history_export_neutralizes_spreadsheet_formulas(client):
     client.post(
         "/api/scan",
-        json={"subject": "=HYPERLINK(\"https://example.test\")", "body": "A message"},
+        json={"subject": "=HYPERLINK(\"https://example.test\")", "body": "=2+2"},
     )
     response = client.get("/api/history/export")
     assert b"'=HYPERLINK" in response.data
+    assert b"',=2+2" not in response.data
+    assert b"'=2+2" in response.data

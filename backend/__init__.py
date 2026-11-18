@@ -378,7 +378,16 @@ def create_app(test_config=None):
         output = io.StringIO(newline="")
         writer = csv.writer(output)
         writer.writerow(
-            ("id", "subject", "sender", "classification", "risk_level", "spam_probability", "created_at")
+            (
+                "id",
+                "subject",
+                "sender",
+                "message",
+                "classification",
+                "risk_level",
+                "spam_probability",
+                "created_at",
+            )
         )
         for item in get_history(
             app.config["DATABASE"], current_user()["id"], limit=100_000
@@ -388,6 +397,7 @@ def create_app(test_config=None):
                     item["id"],
                     safe_csv_value(item["subject"]),
                     safe_csv_value(item["sender"]),
+                    safe_csv_value(item["text"]),
                     safe_csv_value(item["classification"]),
                     safe_csv_value(item["risk_level"]),
                     item["confidence"],
@@ -480,7 +490,16 @@ def create_app(test_config=None):
         output = io.StringIO(newline="")
         writer = csv.writer(output)
         writer.writerow(
-            ("id", "subject", "sender", "classification", "risk_level", "spam_probability", "created_at")
+            (
+                "id",
+                "subject",
+                "sender",
+                "message",
+                "classification",
+                "risk_level",
+                "spam_probability",
+                "created_at",
+            )
         )
         for item in batch["items"]:
             writer.writerow(
@@ -488,6 +507,7 @@ def create_app(test_config=None):
                     item["id"],
                     safe_csv_value(item["subject"]),
                     safe_csv_value(item["sender"]),
+                    safe_csv_value(item["text"]),
                     safe_csv_value(item["classification"]),
                     safe_csv_value(item["risk_level"]),
                     item["confidence"],
