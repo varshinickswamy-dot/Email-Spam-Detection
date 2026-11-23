@@ -1,5 +1,10 @@
 # InboxGuard — Email Security Analysis
 
+## 🚀 Live Demo
+
+**Live Website:** [Open InboxGuard – Email Spam Detection](https://email-spam-detection-silk.vercel.app/)
+
+---
 InboxGuard is a local-first, educational email security web application. It combines an email-specific supervised machine-learning model with transparent secondary indicators for suspicious wording, sender impersonation, and URL patterns. It includes verified accounts, isolated scan history, individual and CSV bulk scanning, analytics, model reports, and light/dark themes.
 
 > **Scope and safety:** The email model is trained on Apache SpamAssassin emails. The original UCI SMS model and data remain separate and are not used to make email predictions. The SpamAssassin labels are only `spam` and `legitimate`; phishing and promotional labels in the UI are rule-assisted assessments, not independently trained classes. URL analysis is offline: the app never visits submitted links. Results are advisory and cannot guarantee that an email is safe.
