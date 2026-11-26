@@ -22,6 +22,11 @@
         <a href="{{ url_for('bulk_scanner') }}" class="{% if request.endpoint == 'bulk_scanner' %}active{% endif %}"><span>▤</span> Bulk scan</a>
         <a href="{{ url_for('history_page') }}" class="{% if request.endpoint == 'history_page' %}active{% endif %}"><span>◷</span> Scan history</a>
         <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}"><span>ⓘ</span> About & model</a>
+        <p class="nav-caption nav-caption-secondary">PROTECTION & INSIGHTS</p>
+        <a href="{{ url_for('dashboard') }}#campaign-alerts"><span>⌁</span> Campaign alerts</a>
+        <a href="{{ url_for('dashboard') }}#domain-rules"><span>⊞</span> Domain rules</a>
+        <a href="{{ url_for('dashboard') }}#scan-distribution"><span>◉</span> Scan analytics</a>
+        <a href="{{ url_for('dashboard') }}#activity-trend"><span>⌁</span> Activity trends</a>
         <a href="{{ url_for('account') }}" class="{% if request.endpoint == 'account' %}active{% endif %}"><span>⚙</span> Account</a>
       </nav>
       <div class="sidebar-bottom">
@@ -46,7 +51,7 @@
     {% block public_content %}{% endblock %}
   {% endif %}
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="{{ url_for('static', filename='js/security.js') }}?v=20261126-domain-rules-v1" defer></script>
+  <script src="{{ url_for('static', filename='js/security.js') }}?v=20261126-inboxguard-refresh-v2" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
