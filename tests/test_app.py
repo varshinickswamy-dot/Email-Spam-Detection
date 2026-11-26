@@ -405,6 +405,44 @@ def test_raw_email_scan_extracts_subject_and_sender(client):
     assert history["sender"] == "Example Sender <hello@example.org>"
 
 
+
+def test_raw_email_authentication_headers_and_reply_to_mismatch(client):
+    raw_email = (
+        "From: Billing <billing@trusted.example>\\r\\n"
+        "Reply-To: attacker@outside.example\\r\\n"
+        "Authentication-Results: mx.example; spf=fail; dkim=pass; dmarc=fail\\r\\n"
+        "Subject: Invoice update\\r\\n"
+        "Content-Type: text/plain; charset=utf-8\\r\\n\\r\\n"
+        "Please review the attached invoice."
+    )
+    response = client.post("/api/scan/raw", json={"raw_email": raw_email})
+    assert response.status_code == 200
+    result = response.get_json()
+    authentication = result["email_authentication"]
+    assert authentication["spf"] == "fail"
+    assert authentication["dkim"] == "pass"
+    assert authentication["dmarc"] == "fail"
+    assert authentication["status"] == "warning"
+    assert any("Reply-To domain" in finding for finding in authentication["findings"])
+    assert any("SPF authentication reported fail" in reason for reason in result["reasons"])
+    assert result["risk_score"] > 0
+
+
+def test_raw_email_without_authentication_headers_reports_unavailable(client):
+    raw_email = (
+        "From: Sender <sender@example.org>\\r\\n"
+        "Subject: Routine note\\r\\n"
+        "Content-Type: text/plain; charset=utf-8\\r\\n\\r\\n"
+        "A routine project update."
+    )
+    response = client.post("/api/scan/raw", json={"raw_email": raw_email})
+    assert response.status_code == 200
+    authentication = response.get_json()["email_authentication"]
+    assert authentication["status"] == "not_available"
+    assert authentication["spf"] == "not_provided"
+    assert authentication["findings"] == []
+
+
 def test_bulk_upload_and_batch_csv_export(client):
     content = io.BytesIO(
         b"subject,sender,body\r\n"
