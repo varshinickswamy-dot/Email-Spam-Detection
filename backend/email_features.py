@@ -107,6 +107,14 @@ def _normalize_url(value):
         return ""
 
 
+def _is_ip_address(host):
+    try:
+        ipaddress.ip_address(str(host).strip("[]"))
+        return True
+    except ValueError:
+        return False
+
+
 def inspect_urls(record):
     body = str(record.get("body", "") or "")
     html_body = str(record.get("html_body", "") or "")
@@ -157,6 +165,16 @@ def inspect_urls(record):
             flags.append("uncommon high-risk TLD")
         if url.lower().startswith("http://"):
             flags.append("unencrypted HTTP link")
+        try:
+            parsed_url = urlsplit(url)
+            if parsed_url.username is not None or parsed_url.password is not None:
+                flags.append("URL contains embedded user information")
+            if parsed_url.port and parsed_url.port not in {80, 443}:
+                flags.append("non-standard URL port")
+        except ValueError:
+            flags.append("malformed URL authority")
+        if not _is_ip_address(host) and len(host.split(".")) >= 5:
+            flags.append("excessive subdomain depth")
         anchor_text = str(candidate.get("text", "") or "").strip()
         displayed_hosts = re.findall(
             r"(?i)(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})",
