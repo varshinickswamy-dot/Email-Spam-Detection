@@ -293,11 +293,11 @@ async function loadHistory() {
     table.innerHTML = result.items.length ? result.items.map(item => `
       <tr><td><b>${escapeHTML(item.subject || "(no subject)")}</b><small>${escapeHTML(item.sender || "Sender not provided")}</small><small class="excerpt">${escapeHTML(item.text.slice(0, 130))}</small></td>
       <td><span class="classification-pill ${escapeHTML(item.classification)}">${escapeHTML(classificationLabel(item.classification))}</span></td>
-      <td><span class="risk-pill ${escapeHTML(item.risk_level)}">${escapeHTML(item.risk_level)}</span></td><td>${percent(item.confidence)}</td><td>${escapeHTML(formatDate(item.created_at))}</td></tr>`).join("")
-      : '<tr><td colspan="5" class="empty-row">No matching scans.</td></tr>';
+      <td><span class="risk-pill ${escapeHTML(item.risk_level)}">${escapeHTML(item.risk_level)}</span></td><td>${percent(item.confidence)}</td><td>${escapeHTML(formatDate(item.created_at))}</td><td><a class="button button-quiet report-link" href="/api/history/${Number(item.id)}/report.pdf" aria-label="Download PDF report for scan ${Number(item.id)}">PDF report</a></td></tr>`).join("")
+      : '<tr><td colspan="6" class="empty-row">No matching scans.</td></tr>';
     $("#history-count").textContent = `${result.items.length} scan${result.items.length === 1 ? "" : "s"} shown`;
   } catch (error) {
-    table.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHTML(error.message)}</td></tr>`;
+    table.innerHTML = `<tr><td colspan="6" class="empty-row">${escapeHTML(error.message)}</td></tr>`;
   }
 }
 
