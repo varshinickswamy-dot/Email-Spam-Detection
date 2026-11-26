@@ -28,6 +28,7 @@
         <a href="{{ url_for('dashboard') }}#scan-distribution"><span>◉</span> Scan analytics</a>
         <a href="{{ url_for('dashboard') }}#activity-trend"><span>⌁</span> Activity trends</a>
         <a href="{{ url_for('dashboard') }}#security-activity"><span>◷</span> Security activity</a>
+        <a href="{{ url_for('dashboard') }}#notifications"><span>♢</span> Notifications <span id="notification-badge" class="notification-badge" hidden>0</span></a>
         <a href="{{ url_for('account') }}" class="{% if request.endpoint == 'account' %}active{% endif %}"><span>⚙</span> Account</a>
       </nav>
       <div class="sidebar-bottom">
@@ -43,7 +44,7 @@
       <header class="topbar">
         <button class="menu-button" id="menu-toggle" aria-label="Toggle navigation">☰</button>
         <div class="crumb">Workspace <span>/</span> <b>{% block breadcrumb %}Overview{% endblock %}</b></div>
-        <div class="top-actions"><button class="icon-button" id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">◐</button><span class="user-chip">Account</span></div>
+        <div class="top-actions"><a class="icon-button notification-top-link" href="{{ url_for('dashboard') }}#notifications" aria-label="Notifications">♢<span id="notification-badge-top" class="notification-badge" hidden>0</span></a><button class="icon-button" id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">◐</button><span class="user-chip">Account</span></div>
       </header>
       <div class="content">{% block content %}{% endblock %}</div>
     </main>
@@ -52,7 +53,7 @@
     {% block public_content %}{% endblock %}
   {% endif %}
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="{{ url_for('static', filename='js/security.js') }}?v=20261126-security-activity-v1" defer></script>
+  <script src="{{ url_for('static', filename='js/security.js') }}?v=20261126-notifications-v1" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
