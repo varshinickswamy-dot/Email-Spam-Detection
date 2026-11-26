@@ -62,7 +62,7 @@ def _sender_impersonation(sender, urls):
         labels = domain.lower().split(".")
         normalized_labels = [label.replace("-", "").replace("_", "") for label in labels]
         return any(
-            len(label) >= 4 and SequenceMatcher(None, label, brand).ratio() >= 0.78
+            len(label) >= 4 and SequenceMatcher(None, label, brand).ratio() >= 0.72
             for label in normalized_labels[:-1]
         )
 
