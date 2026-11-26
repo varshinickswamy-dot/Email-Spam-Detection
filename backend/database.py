@@ -775,6 +775,14 @@ def get_notifications(database_path, user_id, limit=50):
     return [dict(row) for row in rows]
 
 
+
+def mark_all_notifications_read(database_path, user_id):
+    with _connect(database_path) as connection:
+        return connection.execute(
+            "UPDATE notifications SET is_read=1 WHERE user_id=? AND is_dismissed=0 AND is_read=0",
+            (user_id,),
+        ).rowcount
+
 def update_notification(database_path, user_id, notification_id, action):
     if action not in {"read","unread","dismiss"}:
         return 0
