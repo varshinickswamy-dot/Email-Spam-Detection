@@ -218,7 +218,6 @@ $("#history-search").addEventListener("input", () => {
   window.historySearchTimer = window.setTimeout(refreshHistory, 200);
 });
 $("#history-filter").addEventListener("change", refreshHistory);
-$("#export-button").addEventListener("click", () => { window.location.href = "/api/history/export"; });
 $("#clear-history-button").addEventListener("click", async () => {
   if (!window.confirm("Clear all saved prediction history? This cannot be undone.")) return;
   try {
