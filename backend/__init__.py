@@ -795,6 +795,7 @@ def create_app(test_config=None):
         return jsonify(deleted=deleted)
 
     @app.get("/api/history/export")
+    @app.get("/api/history/export.csv")
     @app.get("/history/export")
     @login_required
     def export_history():
@@ -828,12 +829,18 @@ def create_app(test_config=None):
                 )
             )
         security_event("history_export", "success", current_user()["id"])
-        return send_file(
+        response = send_file(
             io.BytesIO(output.getvalue().encode("utf-8-sig")),
-            mimetype="text/csv",
+            mimetype="text/csv; charset=utf-8",
             as_attachment=True,
             download_name="inboxguard-history.csv",
+            max_age=0,
         )
+        response.headers["Content-Disposition"] = 'attachment; filename="inboxguard-history.csv"'
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @app.get("/api/stats")
     @login_required
