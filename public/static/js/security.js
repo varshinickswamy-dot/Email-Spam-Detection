@@ -383,7 +383,23 @@ $("#domain-rule-list")?.addEventListener("click", async event => {
   }
 });
 
+async function loadSecurityActivity() {
+  const list = $("#security-event-list");
+  if (!list) return;
+  try {
+    const result = await requestJSON("/api/security-events");
+    const items = result.items || [];
+    $("#security-event-count").textContent = items.length + " recent events";
+    list.innerHTML = items.length ? items.map(item => {
+      const title = String(item.event || "security_event").replaceAll("_", " ");
+      const outcome = String(item.outcome || "recorded");
+      const good = ["success", "sent"].includes(outcome);
+      return '<div class="distribution-row security-event-row"><span><b>' + escapeHTML(title) + '</b><small>' + escapeHTML(formatDate(item.created_at)) + '</small></span><span class="classification-pill ' + (good ? "safe" : "phishing_suspicious") + '">' + escapeHTML(outcome.toUpperCase()) + '</span></div>';
+    }).join("") : '<p class="empty-row">No account security events have been recorded yet.</p>';
+  } catch (error) { list.innerHTML = '<p class="empty-row">' + escapeHTML(error.message) + '</p>'; }
+}
 loadDashboard();
 loadDomainRules();
+loadSecurityActivity();
 loadHistory();
 loadModelDetails();
