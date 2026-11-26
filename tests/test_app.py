@@ -103,6 +103,15 @@ def test_url_inspection_rejects_control_characters_and_invalid_idna():
     assert _normalize_url("https://exa\ud800mple.com") == ""
 
 
+def test_dashboard_exposes_refresh_and_notification_filters(client):
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    assert b"id=\"dashboard-refresh\"" in response.data
+    assert b"data-notification-filter=\"all\"" in response.data
+    assert b"data-notification-filter=\"unread\"" in response.data
+    assert b"<th>REPORT</th>" in response.data
+
+
 def test_public_pages_auth_and_model_info(app):
     client = app.test_client()
     assert client.get("/").status_code == 200

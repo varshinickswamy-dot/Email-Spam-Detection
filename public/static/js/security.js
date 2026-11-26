@@ -383,16 +383,24 @@ $("#domain-rule-list")?.addEventListener("click", async event => {
   }
 });
 
+let notificationItems = [];
+let notificationFilter = "all";
+function renderNotifications() {
+ const list = $("#notification-list"); if (!list) return;
+ const visible = notificationFilter === "unread" ? notificationItems.filter(item => !item.is_read) : notificationItems;
+ list.innerHTML = visible.length ? visible.map(item => '<article class="notification-row ' + (item.is_read ? 'is-read' : 'is-unread') + '"><div class="notification-copy"><span class="notification-severity ' + escapeHTML(item.severity) + '">' + escapeHTML(String(item.severity).toUpperCase()) + '</span><b>' + escapeHTML(item.title) + '</b><p>' + escapeHTML(item.message) + '</p><small>' + escapeHTML(formatDate(item.created_at)) + '</small></div><div class="notification-actions">' + (item.is_read ? '' : '<button class="button button-quiet" data-notification-action="read" data-id="' + Number(item.id) + '">Mark read</button>') + '<button class="button button-quiet" data-notification-action="dismiss" data-id="' + Number(item.id) + '">Dismiss</button></div></article>').join('') : '<p class="empty-row">' + (notificationFilter === "unread" ? "No unread notifications." : "You’re all caught up.") + '</p>';
+}
 async function loadNotifications() {
  const list = $("#notification-list"); if (!list) return;
  try {
-  const data = await requestJSON("/api/notifications"); const unread = Number(data.unread_count || 0);
+  const data = await requestJSON("/api/notifications"); notificationItems = Array.isArray(data.items) ? data.items : []; const unread = Number(data.unread_count || 0);
   $("#notification-count").textContent = unread + " unread";
   const markAllButton = $("#notification-mark-all-read"); if (markAllButton) markAllButton.disabled = unread === 0;
   ["#notification-badge", "#notification-badge-top"].forEach(sel => { const el = $(sel); if (el) { el.hidden = unread === 0; el.textContent = unread > 99 ? "99+" : String(unread); } });
-  list.innerHTML = data.items.length ? data.items.map(item => '<article class="notification-row ' + (item.is_read ? 'is-read' : 'is-unread') + '"><div class="notification-copy"><span class="notification-severity ' + escapeHTML(item.severity) + '">' + escapeHTML(String(item.severity).toUpperCase()) + '</span><b>' + escapeHTML(item.title) + '</b><p>' + escapeHTML(item.message) + '</p><small>' + escapeHTML(formatDate(item.created_at)) + '</small></div><div class="notification-actions">' + (item.is_read ? '' : '<button class="button button-quiet" data-notification-action="read" data-id="' + Number(item.id) + '">Mark read</button>') + '<button class="button button-quiet" data-notification-action="dismiss" data-id="' + Number(item.id) + '">Dismiss</button></div></article>').join('') : '<p class="empty-row">You’re all caught up.</p>';
+  renderNotifications();
  } catch (error) { list.innerHTML = '<p class="empty-row">' + escapeHTML(error.message) + '</p>'; }
 }
+$(".notification-filters")?.addEventListener("click", event => { const button = event.target.closest("[data-notification-filter]"); if (!button) return; notificationFilter = button.dataset.notificationFilter === "unread" ? "unread" : "all"; $(".notification-filters").querySelectorAll("[data-notification-filter]").forEach(item => { const active = item === button; item.classList.toggle("active", active); item.setAttribute("aria-pressed", String(active)); }); renderNotifications(); });
 $("#notification-mark-all-read")?.addEventListener("click", async () => { const button = $("#notification-mark-all-read"); if (!button || button.disabled) return; button.disabled = true; try { await requestJSON("/api/notifications/read-all", {method:"POST"}); await loadNotifications(); toast("All notifications marked as read."); } catch (error) { button.disabled = false; toast(error.message); } });
 $("#notification-list")?.addEventListener("click", async event => { const button = event.target.closest("[data-notification-action]"); if (!button) return; try { await requestJSON("/api/notifications/" + Number(button.dataset.id), {method:"PATCH", body:JSON.stringify({action:button.dataset.notificationAction})}); await loadNotifications(); } catch (error) { toast(error.message); } });
 
@@ -411,6 +419,7 @@ async function loadSecurityActivity() {
     }).join("") : '<p class="empty-row">No account security events have been recorded yet.</p>';
   } catch (error) { list.innerHTML = '<p class="empty-row">' + escapeHTML(error.message) + '</p>'; }
 }
+$("#dashboard-refresh")?.addEventListener("click", async () => { const button = $("#dashboard-refresh"); if (!button || button.disabled) return; button.disabled = true; button.textContent = "Refreshing…"; try { await Promise.all([loadDashboard(), loadDomainRules(), loadSecurityActivity(), loadNotifications(), loadHistory(), loadModelDetails()]); const stamp = $("#dashboard-updated"); if (stamp) stamp.textContent = "Updated " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}); toast("Dashboard refreshed."); } finally { button.disabled = false; button.textContent = "↻ Refresh overview"; } });
 loadDashboard();
 loadDomainRules();
 loadSecurityActivity();
