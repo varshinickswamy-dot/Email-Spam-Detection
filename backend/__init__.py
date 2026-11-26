@@ -42,6 +42,8 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from backend.database import (
     get_scan_by_id,
     get_security_events,
+    get_notifications,
+    update_notification,
     record_security_event,
     clear_history,
     delete_domain_rule,
@@ -1042,6 +1044,24 @@ def create_app(test_config=None):
     @login_required
     def security_events():
         return jsonify({"items": get_security_events(app.config["DATABASE"], current_user()["id"], 50)})
+
+
+    @app.get("/api/notifications")
+    @login_required
+    def notifications_list():
+        items = get_notifications(app.config["DATABASE"], current_user()["id"], 50)
+        return jsonify({"items": items, "unread_count": sum(not item["is_read"] for item in items)})
+
+    @app.patch("/api/notifications/<int:notification_id>")
+    @login_required
+    def notification_update(notification_id):
+        payload = request.get_json(silent=True) or {}
+        action = payload.get("action")
+        if action not in {"read", "unread", "dismiss"}:
+            return jsonify({"error": "Choose read, unread or dismiss."}), 400
+        if not update_notification(app.config["DATABASE"], current_user()["id"], notification_id, action):
+            return jsonify({"error": "Notification not found."}), 404
+        return jsonify({"success": True})
 
     @app.post("/api/bulk")
     @login_required
