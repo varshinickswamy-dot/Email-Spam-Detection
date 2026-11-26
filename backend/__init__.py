@@ -55,7 +55,7 @@ from backend.database import (
     verify_user,
 )
 from backend.detection_engine import analyze_email
-from backend.email_features import analyze_email_authentication, parse_raw_email
+from backend.email_features import analyze_attachments, analyze_email_authentication, parse_raw_email
 from backend.model_service import EmailSecurityModel
 
 
@@ -756,14 +756,15 @@ def create_app(test_config=None):
         authentication = analyze_email_authentication(
             parsed_email.get("headers", {}), record.get("sender", "")
         )
+        attachment_analysis = analyze_attachments(parsed_email.get("attachments", []))
         result["email_authentication"] = authentication
-        if authentication["findings"]:
-            result["reasons"] = list(dict.fromkeys(
-                result["reasons"] + authentication["findings"]
-            ))
-            result["risk_score"] = min(
-                100, result["risk_score"] + authentication["risk_points"]
-            )
+        result["attachment_analysis"] = attachment_analysis
+        additional_findings = authentication["findings"] + attachment_analysis["findings"]
+        additional_risk = authentication["risk_points"] + attachment_analysis["risk_points"]
+        if additional_findings:
+            result["reasons"] = list(dict.fromkeys(result["reasons"] + additional_findings))
+        if additional_risk:
+            result["risk_score"] = min(100, result["risk_score"] + additional_risk)
             result["risk_level"] = (
                 "critical" if result["risk_score"] >= 75 else
                 "high" if result["risk_score"] >= 45 else
