@@ -205,3 +205,12 @@ img, svg, video, canvas { max-width: 100%; }
  .auth-card, .surface { border-radius: 14px; }
  .table-foot { overflow-wrap: anywhere; }
 }
+
+/* Security activity centre */
+.security-activity-card { min-width: 0; }
+.security-activity-card .card-heading p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.security-event-row { min-width: 0; }
+.security-event-row > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.security-event-row small { display: block; color: var(--soft); margin-top: 4px; }
+.security-event-row .classification-pill { flex: 0 0 auto; }
+@media (max-width: 520px) { .security-event-row { align-items: flex-start; flex-direction: column; gap: 8px; } .security-event-row .classification-pill { align-self: flex-start; } }
