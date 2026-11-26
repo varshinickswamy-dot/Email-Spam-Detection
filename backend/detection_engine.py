@@ -206,3 +206,53 @@ def analyze_email(record, spam_probability, classification_threshold=0.5):
         "recommended_action": recommendations[classification],
         "signals": list(signals),
     }
+
+
+def detect_phishing_campaigns(history_items, minimum_matches=3):
+    """Find repeated suspicious sender domains or subjects in one user's scan history."""
+    from collections import defaultdict
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=30)
+    domain_groups = defaultdict(list)
+    subject_groups = defaultdict(list)
+    for item in history_items or []:
+        if item.get("classification") not in {"phishing_suspicious", "spam"} and item.get("risk_level") not in {"high", "critical"}:
+            continue
+        try:
+            created = datetime.fromisoformat(str(item.get("created_at", "")).replace("Z", "+00:00"))
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            if created < cutoff:
+                continue
+        except (TypeError, ValueError):
+            continue
+        sender = str(item.get("sender", "") or "").lower()
+        match = re.search(r"@([a-z0-9.-]+\.[a-z]{2,})", sender)
+        if match:
+            domain_groups[match.group(1)].append(item)
+        subject = re.sub(r"[^a-z0-9]+", " ", str(item.get("subject", "") or "").lower()).strip()
+        if len(subject) >= 8:
+            subject_groups[subject].append(item)
+
+    alerts = []
+    for domain, items in domain_groups.items():
+        if len(items) >= minimum_matches:
+            alerts.append({
+                "type": "repeated_sender_domain",
+                "indicator": domain,
+                "count": len(items),
+                "message": f"{len(items)} suspicious emails from the same sender domain were detected in your last 30 days of scans.",
+                "latest": max(str(item.get("created_at", "")) for item in items),
+            })
+    for subject, items in subject_groups.items():
+        if len(items) >= minimum_matches:
+            alerts.append({
+                "type": "repeated_subject",
+                "indicator": subject[:120],
+                "count": len(items),
+                "message": f"{len(items)} suspicious emails share the same normalized subject in your last 30 days of scans.",
+                "latest": max(str(item.get("created_at", "")) for item in items),
+            })
+    return sorted(alerts, key=lambda alert: (alert["count"], alert["latest"]), reverse=True)[:20]
