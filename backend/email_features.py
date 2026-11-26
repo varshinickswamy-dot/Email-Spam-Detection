@@ -241,6 +241,35 @@ def prepare_model_frame(records):
     )
 
 
+def analyze_email_authentication(headers, sender=""):
+    """Summarize sender-authentication headers without treating missing data as failure."""
+    headers = headers or {}
+    auth_results = str(headers.get("authentication_results", "") or "").lower()
+    statuses = {}
+    for mechanism in ("spf", "dkim", "dmarc"):
+        matches = re.findall(r"(?<![a-z0-9_-])" + mechanism + r"\s*=\s*(pass|fail|softfail|neutral|none|temperror|permerror)", auth_results)
+        statuses[mechanism] = matches[0] if matches else "not_provided"
+    findings = []
+    risk_points = 0
+    for mechanism, status in statuses.items():
+        if status in {"fail", "softfail", "permerror"}:
+            findings.append(f"{mechanism.upper()} authentication reported {status}.")
+            risk_points += 12 if mechanism == "dmarc" else 8
+    _, _, from_domain = _sender_parts(sender)
+    reply_to = str(headers.get("reply_to", "") or "")
+    _, _, reply_domain = _sender_parts(reply_to)
+    if from_domain and reply_domain and from_domain != reply_domain:
+        findings.append(f"Reply-To domain {reply_domain} differs from the visible sender domain {from_domain}.")
+        risk_points += 15
+    return {
+        "available": bool(auth_results or reply_to or headers.get("return_path")),
+        "spf": statuses["spf"], "dkim": statuses["dkim"], "dmarc": statuses["dmarc"],
+        "reply_to": reply_to, "return_path": str(headers.get("return_path", "") or ""),
+        "findings": findings, "risk_points": min(35, risk_points),
+        "status": "warning" if findings else ("provided" if auth_results else "not_available"),
+        "note": "Authentication-Results headers are supplied by the receiving mail system; pasted or forged headers cannot independently prove authenticity.",
+    }
+
 def parse_raw_email(raw_email):
     message = BytesParser(policy=policy.default).parsebytes(
         str(raw_email).encode("utf-8", errors="replace")
@@ -269,6 +298,11 @@ def parse_raw_email(raw_email):
         "body": "\n".join(plain_parts or html_parts),
         "html_body": "\n".join(html_parts),
         "links": [],
+        "headers": {
+            "authentication_results": " ".join(str(value) for value in message.get_all("Authentication-Results", [])),
+            "reply_to": str(message.get("Reply-To", "") or ""),
+            "return_path": str(message.get("Return-Path", "") or ""),
+        },
     }
 
 
