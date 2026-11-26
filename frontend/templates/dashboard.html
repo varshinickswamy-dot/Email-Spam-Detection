@@ -17,6 +17,16 @@
   <div class="card-heading"><div><span class="eyebrow">THREAT INTELLIGENCE</span><h2>Phishing campaign alerts</h2></div><span class="quiet-label" id="campaign-alert-count">Checking patterns…</span></div>
   <div id="campaign-alert-list"><p class="empty-row">Campaign alerts will appear here when repeated suspicious patterns are detected.</p></div>
 </section>
+<section class="surface recent-card domain-rules-card">
+  <div class="card-heading"><div><span class="eyebrow">PERSONAL PROTECTION</span><h2>Custom domain rules</h2><p>Add domains you want InboxGuard to flag or recognize.</p></div></div>
+  <form id="domain-rule-form" class="form-grid">
+    <label>Domain<input id="domain-rule-domain" maxlength="253" placeholder="example.com" required></label>
+    <label>Rule action<select id="domain-rule-action"><option value="block">Block / flag</option><option value="allow">Allow / annotate</option></select></label>
+    <div class="scan-controls"><button class="button button-primary" type="submit">Save domain rule</button></div>
+  </form>
+  <p class="fine-print">Rules apply to sender and link domains in future scans. Allowlist matches never silence other threat warnings.</p>
+  <div id="domain-rule-list"><p class="empty-row">Loading your domain rules…</p></div>
+</section>
 <section class="dashboard-grid">
   <article class="surface chart-card"><div class="card-heading"><div><span class="eyebrow">CLASSIFICATION</span><h2>Scan distribution</h2></div><span class="quiet-label">Your account</span></div><div class="distribution" id="distribution"></div></article>
   <article class="surface model-summary"><div class="card-heading"><div><span class="eyebrow">MODEL STATUS</span><h2 id="model-name">Loading model…</h2></div><span class="status-pip"></span></div><p id="model-description">Email-specific model evaluation and calibration details.</p><div class="metric-row"><span>Spam precision <b id="metric-precision">—</b></span><span>Spam recall <b id="metric-recall">—</b></span><span>Spam F1 <b id="metric-f1">—</b></span></div><a class="inline-link" href="{{ url_for('about') }}">Review model details <span>→</span></a></article>
