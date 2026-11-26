@@ -59,8 +59,12 @@ def _sender_impersonation(sender, urls):
     def lookalike_brand(domain, brand, known_domains):
         if not domain or not known_domains or trusted_domain(domain, known_domains):
             return False
-        label = domain.split(".", 1)[0].replace("-", "").replace("_", "")
-        return len(label) >= 4 and SequenceMatcher(None, label, brand).ratio() >= 0.78
+        labels = domain.lower().split(".")
+        normalized_labels = [label.replace("-", "").replace("_", "") for label in labels]
+        return any(
+            len(label) >= 4 and SequenceMatcher(None, label, brand).ratio() >= 0.78
+            for label in normalized_labels[:-1]
+        )
 
     for brand, domains in BRAND_DOMAINS.items():
         if brand in lowered and domains and sender_domain and not trusted_domain(sender_domain, domains):
