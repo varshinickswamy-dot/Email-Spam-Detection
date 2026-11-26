@@ -527,6 +527,24 @@ def get_history(database_path, user_id, query="", classification="", limit=100):
     return items
 
 
+def get_scan_by_id(database_path, user_id, scan_id):
+    """Return one scan only when it belongs to the requesting account."""
+    with _connect(database_path) as connection:
+        row = connection.execute(
+            """
+            SELECT id, text, label, confidence, created_at, subject, sender,
+                   classification, risk_level, risk_score, details_json, batch_id
+            FROM predictions WHERE id = ? AND user_id = ?
+            """,
+            (scan_id, user_id),
+        ).fetchone()
+    if not row:
+        return None
+    item = dict(row)
+    item["details"] = json.loads(item.pop("details_json") or "{}")
+    return item
+
+
 def get_batch_history(database_path, user_id, batch_id):
     with _connect(database_path) as connection:
         batch = connection.execute(
