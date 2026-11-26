@@ -399,7 +399,7 @@ def create_app(test_config=None):
         probability = model.predict_spam_probability(record)
         result = analyze_email(record, probability, model.threshold)
         rules = get_domain_rules(app.config["DATABASE"], user_id)
-        sender_match = re.search(r"@([A-Z0-9.-]+\\.[A-Z]{2,})", record.get("sender", ""), re.I)
+        sender_match = re.search(r"@([A-Z0-9.-]+\.[A-Z]{2,})", record.get("sender", ""), re.I)
         sender_domain = sender_match.group(1).lower().strip(".") if sender_match else ""
         observed_domains = {item.get("domain", "").lower().strip(".") for item in result.get("links", [])}
         observed_domains.discard("")
