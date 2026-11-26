@@ -778,3 +778,16 @@ def test_scan_pdf_report_is_downloadable_and_account_scoped(client, app):
 def test_scan_pdf_report_requires_authentication(app):
     response = app.test_client().get("/api/history/1/report.pdf")
     assert response.status_code == 401
+
+def test_security_activity_is_persisted_and_scoped_to_account(client, app):
+    items = client.get("/api/security-events").get_json()["items"]
+    assert any(item["event"] == "email_verification" for item in items)
+    assert any(item["event"] == "login" and item["outcome"] == "success" for item in items)
+    other = app.test_client()
+    register(other, "another-user@example.org")
+    other_items = other.get("/api/security-events").get_json()["items"]
+    assert other_items
+    assert all(item["event"] != "email_verification" for item in other_items)
+
+def test_security_activity_requires_authentication(app):
+    assert app.test_client().get("/api/security-events").status_code == 401
