@@ -55,7 +55,7 @@ from backend.database import (
     verify_user,
 )
 from backend.detection_engine import analyze_email
-from backend.email_features import parse_raw_email
+from backend.email_features import analyze_email_authentication, parse_raw_email
 from backend.model_service import EmailSecurityModel
 
 
@@ -747,11 +747,28 @@ def create_app(test_config=None):
             return jsonify(error="Paste a complete email to analyze."), 400
         if len(raw_email) > MAX_EMAIL_CHARS:
             return jsonify(error=f"Raw email cannot exceed {MAX_EMAIL_CHARS:,} characters."), 400
-        record, error = validate_email_record(parse_raw_email(raw_email))
+        parsed_email = parse_raw_email(raw_email)
+        record, error = validate_email_record(parsed_email)
         if error:
             return jsonify(error=error), 400
         user_id = current_user()["id"]
         result = scan_record(record, user_id, scan_kind="raw_email")
+        authentication = analyze_email_authentication(
+            parsed_email.get("headers", {}), record.get("sender", "")
+        )
+        result["email_authentication"] = authentication
+        if authentication["findings"]:
+            result["reasons"] = list(dict.fromkeys(
+                result["reasons"] + authentication["findings"]
+            ))
+            result["risk_score"] = min(
+                100, result["risk_score"] + authentication["risk_points"]
+            )
+            result["risk_level"] = (
+                "critical" if result["risk_score"] >= 75 else
+                "high" if result["risk_score"] >= 45 else
+                "medium" if result["risk_score"] >= 20 else "low"
+            )
         security_event("email_scan", "success", user_id)
         return jsonify(result)
 
