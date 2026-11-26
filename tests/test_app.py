@@ -116,6 +116,12 @@ def test_registration_requires_one_time_email_verification(app):
         "/login",
         data={"email": "verify@example.org", "password": "secure-demo-password-123"},
     ).status_code == 302
+    notifications = client.get("/api/notifications").get_json()["items"]
+    assert any(
+        item["title"] == "Unverified login attempt"
+        and item["severity"] == "warning"
+        for item in notifications
+    )
 
 
 def test_password_recovery_is_generic_one_time_and_revokes_sessions(client, app):
