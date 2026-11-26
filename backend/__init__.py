@@ -12,6 +12,7 @@ import ssl
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from xml.sax.saxutils import escape as xml_escape
 from email.message import EmailMessage
 from functools import wraps
 from pathlib import Path
@@ -32,7 +33,14 @@ from flask import (
 )
 from werkzeug.exceptions import BadRequest
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
 from backend.database import (
+    get_scan_by_id,
     clear_history,
     delete_domain_rule,
     get_domain_rules,
@@ -855,6 +863,77 @@ def create_app(test_config=None):
         deleted = clear_history(app.config["DATABASE"], user_id)
         security_event("history_clear", "success", user_id)
         return jsonify(deleted=deleted)
+
+
+    @app.get("/api/history/<int:scan_id>/report.pdf")
+    @login_required
+    def scan_report(scan_id):
+        item = get_scan_by_id(app.config["DATABASE"], current_user()["id"], scan_id)
+        if not item:
+            abort(404)
+        output = io.BytesIO()
+        document = SimpleDocTemplate(
+            output, pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm,
+            topMargin=18 * mm, bottomMargin=18 * mm,
+            title=f"InboxGuard scan report {scan_id}",
+            author="InboxGuard",
+        )
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(
+            name="ReportLabel", parent=styles["Normal"], fontName="Helvetica-Bold",
+            fontSize=9, leading=13, textColor=colors.HexColor("#667085"),
+            spaceAfter=3,
+        ))
+        styles.add(ParagraphStyle(
+            name="ReportValue", parent=styles["BodyText"], fontSize=10,
+            leading=15, wordWrap="CJK", spaceAfter=8,
+        ))
+        story = [
+            Paragraph("INBOXGUARD · EMAIL SECURITY REPORT", styles["Title"]),
+            Paragraph("Individual scan assessment", styles["Heading2"]),
+            Spacer(1, 5 * mm),
+        ]
+        def add_field(label, value):
+            safe_value = xml_escape(str(value or "Not provided")).replace("\\n", "<br/>")
+            story.append(Paragraph(xml_escape(label).upper(), styles["ReportLabel"]))
+            story.append(Paragraph(safe_value, styles["ReportValue"]))
+        add_field("Scan ID", item["id"])
+        add_field("Date (UTC)", item["created_at"])
+        add_field("Sender", item["sender"])
+        add_field("Subject", item["subject"])
+        add_field("Classification", item["classification"] or item["label"])
+        add_field("Risk level", item["risk_level"])
+        add_field("Risk score", f'{item["risk_score"]}/100')
+        add_field("Model spam probability", f'{item["confidence"]:.1%}')
+        story.append(Paragraph("Findings", styles["Heading2"]))
+        reasons = item.get("details", {}).get("reasons", [])
+        if reasons:
+            for reason in reasons[:30]:
+                story.append(Paragraph("• " + xml_escape(str(reason)), styles["ReportValue"]))
+        else:
+            story.append(Paragraph("No additional findings were recorded.", styles["ReportValue"]))
+        story.append(Paragraph("Recommended next step", styles["Heading2"]))
+        add_field("Guidance", item.get("details", {}).get(
+            "recommended_action", "Use caution and verify the sender through a trusted channel."
+        ))
+        add_field("Message excerpt", item.get("text", "")[:2500])
+        story.append(Spacer(1, 5 * mm))
+        story.append(Paragraph(
+            "This report reflects the submitted email content and the model/rules available at scan time. "
+            "It is advisory, may be incorrect, and does not independently authenticate the sender. "
+            "Authentication headers supplied in pasted email content may be forged.",
+            styles["Italic"],
+        ))
+        document.build(story)
+        output.seek(0)
+        response = send_file(
+            output, mimetype="application/pdf", as_attachment=True,
+            download_name=f"inboxguard-scan-{scan_id}-report.pdf", max_age=0,
+        )
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        security_event("scan_report_export", "success", current_user()["id"])
+        return response
 
     @app.get("/api/history/export")
     @app.get("/api/history/export.csv")
