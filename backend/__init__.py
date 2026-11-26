@@ -41,6 +41,8 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 
 from backend.database import (
     get_scan_by_id,
+    get_security_events,
+    record_security_event,
     clear_history,
     delete_domain_rule,
     get_domain_rules,
@@ -171,6 +173,11 @@ def create_app(test_config=None):
         client_digest = hmac.new(
             app.secret_key.encode(), remote_addr.encode(), hashlib.sha256
         ).hexdigest()[:16]
+        if user_id:
+            try:
+                record_security_event(app.config["DATABASE"], user_id, event, outcome, client_digest)
+            except Exception:
+                app.logger.exception("Could not persist security activity event")
         SECURITY_LOGGER.info(
             "%s",
             json.dumps(
@@ -1030,6 +1037,11 @@ def create_app(test_config=None):
         recent_history = get_history(app.config["DATABASE"], user_id, limit=500)
         statistics["campaign_alerts"] = detect_phishing_campaigns(recent_history)
         return jsonify(statistics)
+
+    @app.get("/api/security-events")
+    @login_required
+    def security_events():
+        return jsonify({"items": get_security_events(app.config["DATABASE"], current_user()["id"], 50)})
 
     @app.post("/api/bulk")
     @login_required
