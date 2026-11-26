@@ -34,6 +34,9 @@ from werkzeug.exceptions import BadRequest
 
 from backend.database import (
     clear_history,
+    delete_domain_rule,
+    get_domain_rules,
+    save_domain_rule,
     consume_account_token,
     consume_rate_limit,
     create_scan_batch,
@@ -395,6 +398,47 @@ def create_app(test_config=None):
         model = app.extensions["email_model"]
         probability = model.predict_spam_probability(record)
         result = analyze_email(record, probability, model.threshold)
+        rules = get_domain_rules(app.config["DATABASE"], user_id)
+        sender_match = re.search(r"@([A-Z0-9.-]+\\.[A-Z]{2,})", record.get("sender", ""), re.I)
+        sender_domain = sender_match.group(1).lower().strip(".") if sender_match else ""
+        observed_domains = {item.get("domain", "").lower().strip(".") for item in result.get("links", [])}
+        observed_domains.discard("")
+        matched_blocks = [
+            rule["domain"] for rule in rules
+            if rule["action"] == "block"
+            and (
+                sender_domain == rule["domain"]
+                or sender_domain.endswith("." + rule["domain"])
+                or any(domain == rule["domain"] or domain.endswith("." + rule["domain"]) for domain in observed_domains)
+            )
+        ]
+        matched_allows = [
+            rule["domain"] for rule in rules
+            if rule["action"] == "allow"
+            and (
+                sender_domain == rule["domain"]
+                or sender_domain.endswith("." + rule["domain"])
+                or any(domain == rule["domain"] or domain.endswith("." + rule["domain"]) for domain in observed_domains)
+            )
+        ]
+        if matched_blocks:
+            result["reasons"] = list(dict.fromkeys(
+                result["reasons"] + [f"Domain matches your personal blocklist: {domain}" for domain in matched_blocks]
+            ))
+            result["risk_score"] = min(100, result["risk_score"] + 30)
+            result["risk_level"] = "critical" if result["risk_score"] >= 75 else "high" if result["risk_score"] >= 45 else "medium"
+            result["classification"] = "phishing_suspicious"
+            result["classification_label"] = "PHISHING / SUSPICIOUS"
+            result["recommended_action"] = "This sender or link matches your personal blocklist. Do not interact with it unless you have independently verified it."
+        if matched_allows:
+            result["reasons"] = list(dict.fromkeys(
+                result["reasons"] + [f"Domain is on your personal allowlist: {domain}" for domain in matched_allows]
+            ))
+        result["domain_rule_matches"] = {
+            "blocked": matched_blocks,
+            "allowed": matched_allows,
+            "note": "Allowlist matches are informational and do not suppress other security warnings."
+        }
         result["id"] = record_scan(
             app.config["DATABASE"],
             user_id,
@@ -859,6 +903,45 @@ def create_app(test_config=None):
         response.headers["Pragma"] = "no-cache"
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
+
+    @app.get("/api/domain-rules")
+    @login_required
+    def list_domain_rules():
+        return jsonify(items=get_domain_rules(app.config["DATABASE"], current_user()["id"]))
+
+    @app.post("/api/domain-rules")
+    @login_required
+    def create_domain_rule():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify(error="Send a domain and an allow/block action."), 400
+        domain = str(payload.get("domain", "")).strip().lower().rstrip(".")
+        action = str(payload.get("action", "")).strip().lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
+        if len(domain) > 253 or not re.fullmatch(
+            r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}",
+            domain,
+        ):
+            return jsonify(error="Enter a valid domain name, without a URL or path."), 400
+        if action not in {"allow", "block"}:
+            return jsonify(error="Action must be 'allow' or 'block'."), 400
+        rule = save_domain_rule(
+            app.config["DATABASE"], current_user()["id"], domain, action
+        )
+        security_event("domain_rule_saved", action, current_user()["id"])
+        return jsonify(item=rule), 201
+
+    @app.delete("/api/domain-rules/<int:rule_id>")
+    @login_required
+    def remove_domain_rule(rule_id):
+        deleted = delete_domain_rule(
+            app.config["DATABASE"], current_user()["id"], rule_id
+        )
+        if not deleted:
+            return jsonify(error="Domain rule not found."), 404
+        security_event("domain_rule_deleted", "success", current_user()["id"])
+        return jsonify(deleted=deleted)
 
     @app.get("/api/stats")
     @login_required
