@@ -408,11 +408,11 @@ def test_raw_email_scan_extracts_subject_and_sender(client):
 
 def test_raw_email_authentication_headers_and_reply_to_mismatch(client):
     raw_email = (
-        "From: Billing <billing@trusted.example>\\r\\n"
-        "Reply-To: attacker@outside.example\\r\\n"
-        "Authentication-Results: mx.example; spf=fail; dkim=pass; dmarc=fail\\r\\n"
-        "Subject: Invoice update\\r\\n"
-        "Content-Type: text/plain; charset=utf-8\\r\\n\\r\\n"
+        "From: Billing <billing@trusted.example>\r\n"
+        "Reply-To: attacker@outside.example\r\n"
+        "Authentication-Results: mx.example; spf=fail; dkim=pass; dmarc=fail\r\n"
+        "Subject: Invoice update\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n\r\n"
         "Please review the attached invoice."
     )
     response = client.post("/api/scan/raw", json={"raw_email": raw_email})
@@ -430,9 +430,9 @@ def test_raw_email_authentication_headers_and_reply_to_mismatch(client):
 
 def test_raw_email_without_authentication_headers_reports_unavailable(client):
     raw_email = (
-        "From: Sender <sender@example.org>\\r\\n"
-        "Subject: Routine note\\r\\n"
-        "Content-Type: text/plain; charset=utf-8\\r\\n\\r\\n"
+        "From: Sender <sender@example.org>\r\n"
+        "Subject: Routine note\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n\r\n"
         "A routine project update."
     )
     response = client.post("/api/scan/raw", json={"raw_email": raw_email})
@@ -442,6 +442,41 @@ def test_raw_email_without_authentication_headers_reports_unavailable(client):
     assert authentication["spf"] == "not_provided"
     assert authentication["findings"] == []
 
+
+def test_raw_email_flags_risky_mime_attachment_metadata(client):
+    raw_email = (
+        "From: Sender <sender@example.org>\r\n"
+        "Subject: Document attached\r\n"
+        "MIME-Version: 1.0\r\n"
+        "Content-Type: multipart/mixed; boundary=BOUNDARY\r\n\r\n"
+        "--BOUNDARY\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+        "Please review this document.\r\n"
+        "--BOUNDARY\r\n"
+        "Content-Type: application/octet-stream; name=invoice.js\r\n"
+        "Content-Disposition: attachment; filename=invoice.js\r\n"
+        "Content-Transfer-Encoding: base64\r\n\r\n"
+        "Y29uc29sZS5sb2coJ2hpJyk=\r\n"
+        "--BOUNDARY--\r\n"
+    )
+    response = client.post("/api/scan/raw", json={"raw_email": raw_email})
+    assert response.status_code == 200
+    analysis = response.get_json()["attachment_analysis"]
+    assert analysis["items"][0]["filename"] == "invoice.js"
+    assert analysis["items"][0]["risk"] == "high"
+    assert any("invoice.js" in finding for finding in analysis["findings"])
+
+
+def test_raw_email_without_attachments_returns_empty_attachment_analysis(client):
+    raw_email = (
+        "From: Sender <sender@example.org>\r\n"
+        "Subject: Routine note\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+        "A routine project update."
+    )
+    response = client.post("/api/scan/raw", json={"raw_email": raw_email})
+    assert response.status_code == 200
+    assert response.get_json()["attachment_analysis"]["items"] == []
 
 def test_bulk_upload_and_batch_csv_export(client):
     content = io.BytesIO(
