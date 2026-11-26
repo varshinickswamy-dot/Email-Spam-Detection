@@ -920,7 +920,7 @@ def create_app(test_config=None):
         if domain.startswith("www."):
             domain = domain[4:]
         if len(domain) > 253 or not re.fullmatch(
-            r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}",
+            r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}",
             domain,
         ):
             return jsonify(error="Enter a valid domain name, without a URL or path."), 400
