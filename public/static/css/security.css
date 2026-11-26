@@ -137,3 +137,39 @@ html[data-theme="dark"] .drop-zone { border-color: #566178; }
 @media (max-width: 450px) {
   .dashboard-hero { padding: 24px 20px; }.dashboard-hero h1 { font-size: 30px; }.stat-card { min-height: 98px; padding: 12px; }.form-grid { grid-template-columns: 1fr; }.scan-form, .result-panel { padding: 15px; }.history-tools { width: 100%; }.history-tools > * { flex: 1; }.auth-card { padding: 21px; }.public-nav .icon-button { display: none; }.user-chip { display: none; }
 }
+
+
+/* InboxGuard responsive dashboard refinement */
+.nav-caption-secondary { margin-top: 25px; }
+.domain-rules-card { padding: 22px; }
+.domain-rules-card .card-heading { margin-bottom: 18px; }
+.domain-rules-card .card-heading p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.domain-rules-card .form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .7fr) auto; align-items: end; gap: 14px; }
+.domain-rules-card .form-grid label { display: grid; min-width: 0; gap: 8px; color: var(--ink); font-size: 11px; font-weight: 700; }
+.domain-rules-card input, .domain-rules-card select { width: 100%; min-width: 0; min-height: 43px; padding: 0 12px; color: var(--ink); background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; outline: 0; font-size: 12px; }
+.domain-rules-card input:focus, .domain-rules-card select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+.domain-rules-card .scan-controls { display: flex; align-items: end; }
+.domain-rules-card .button { min-height: 43px; white-space: nowrap; }
+.domain-rules-card .fine-print { max-width: 720px; margin: 15px 0 5px; color: var(--soft); font-size: 10px; line-height: 1.6; }
+#domain-rule-list { margin-top: 13px; }
+#domain-rule-list .distribution-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+#domain-rule-list .distribution-row > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+#domain-rule-list .distribution-row small { display: block; margin-top: 4px; color: var(--soft); }
+#domain-rule-list .button { min-height: 32px; padding: 0 10px; font-size: 10px; }
+.campaign-alerts, .domain-rules-card, .chart-card, .trend-card, .model-summary { scroll-margin-top: 82px; }
+@media (max-width: 900px) {
+ .domain-rules-card .form-grid { grid-template-columns: 1fr 1fr; }
+ .domain-rules-card .scan-controls { grid-column: 1 / -1; }
+ .domain-rules-card .scan-controls .button { width: 100%; }
+}
+@media (max-width: 560px) {
+ .domain-rules-card { padding: 17px; }
+ .domain-rules-card .form-grid { grid-template-columns: minmax(0, 1fr); gap: 13px; }
+ .domain-rules-card .scan-controls { grid-column: auto; }
+ .domain-rules-card .card-heading { margin-bottom: 15px; }
+ .domain-rules-card .card-heading h2 { font-size: 17px; }
+ #domain-rule-list .distribution-row { align-items: flex-start; flex-wrap: wrap; }
+ #domain-rule-list .distribution-row .button { margin-left: auto; }
+ .topbar { min-height: 62px; }
+ .content { padding-top: 18px; }
+}
