@@ -249,6 +249,52 @@ bulkForm?.addEventListener("submit", async event => {
   }
 });
 
+const exportHistoryLink = $("#export-history");
+exportHistoryLink?.addEventListener("click", async event => {
+  event.preventDefault();
+  const link = event.currentTarget;
+  if (link.dataset.downloading === "true") return;
+  link.dataset.downloading = "true";
+  const originalText = link.textContent;
+  link.textContent = "Preparing CSV…";
+  link.setAttribute("aria-busy", "true");
+  try {
+    const response = await fetch(link.href, {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { "Accept": "text/csv" },
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      let message = "CSV export failed (" + response.status + ").";
+      try { const payload = await response.json(); if (payload.error) message = payload.error; } catch (_) {}
+      throw new Error(message);
+    }
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("text/csv")) {
+      throw new Error("The server did not return a CSV file. Please sign in again and retry.");
+    }
+    const blob = await response.blob();
+    if (!blob.size) throw new Error("Your scan history is empty; there is nothing to export.");
+    const objectUrl = URL.createObjectURL(blob);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = objectUrl;
+    downloadLink.download = "inboxguard-history.csv";
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    toast("CSV export is ready. Check your Downloads folder.");
+  } catch (error) {
+    toast(error.message || "Could not export scan history. Please try again.");
+  } finally {
+    link.textContent = originalText;
+    link.removeAttribute("aria-busy");
+    delete link.dataset.downloading;
+  }
+});
+
 async function loadHistory() {
   const table = $("#history-table");
   if (!table) return;
