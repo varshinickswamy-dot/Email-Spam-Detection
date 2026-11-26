@@ -768,7 +768,7 @@ def test_scan_pdf_report_is_downloadable_and_account_scoped(client, app):
     assert response.mimetype == "application/pdf"
     assert response.data.startswith(b"%PDF")
     assert f"inboxguard-scan-{scan['id']}-report.pdf" in response.headers["Content-Disposition"]
-    assert b"no-store" in response.headers["Cache-Control"]
+    assert "no-store" in response.headers["Cache-Control"]
 
     other = app.test_client()
     register(other, "other-analyst@example.org")
