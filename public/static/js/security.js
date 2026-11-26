@@ -77,6 +77,22 @@ async function loadDashboard() {
     $("#stat-legitimate").textContent = stats.legitimate.toLocaleString();
     $("#stat-phishing").textContent = stats.phishing.toLocaleString();
     $("#stat-rate").textContent = `${(stats.spam_rate * 100).toFixed(1)}%`;
+    const campaignAlerts = Array.isArray(stats.campaign_alerts) ? stats.campaign_alerts : [];
+    const campaignCount = $("#campaign-alert-count");
+    const campaignList = $("#campaign-alert-list");
+    if (campaignCount && campaignList) {
+      campaignCount.textContent = campaignAlerts.length
+        ? `${campaignAlerts.length} pattern${campaignAlerts.length === 1 ? "" : "s"} found`
+        : "No patterns found";
+      campaignList.innerHTML = campaignAlerts.length
+        ? campaignAlerts.map(alert => `
+          <article class="distribution-row">
+            <span><b>${escapeHTML(alert.type === "repeated_sender_domain" ? "Repeated sender domain" : "Repeated subject")}</b><small>${escapeHTML(alert.indicator)}</small></span>
+            <b>${escapeHTML(alert.count)} matches</b>
+            <p>${escapeHTML(alert.message)}</p>
+          </article>`).join("")
+        : '<p class="empty-row">No repeated suspicious campaigns were detected in your recent scans.</p>';
+    }
     const labels = [
       ["safe", "Safe / legitimate", "#16a34a"],
       ["promotional", "Promotional", "#6366f1"],
