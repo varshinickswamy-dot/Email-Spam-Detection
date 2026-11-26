@@ -43,6 +43,7 @@ from backend.database import (
     get_scan_by_id,
     get_security_events,
     get_notifications,
+    mark_all_notifications_read,
     update_notification,
     record_security_event,
     clear_history,
@@ -1081,6 +1082,12 @@ def create_app(test_config=None):
     def notifications_list():
         items = get_notifications(app.config["DATABASE"], current_user()["id"], 50)
         return jsonify({"items": items, "unread_count": sum(not item["is_read"] for item in items)})
+
+    @app.post("/api/notifications/read-all")
+    @login_required
+    def notifications_mark_all_read():
+        updated = mark_all_notifications_read(app.config["DATABASE"], current_user()["id"])
+        return jsonify({"success": True, "updated": updated})
 
     @app.patch("/api/notifications/<int:notification_id>")
     @login_required
