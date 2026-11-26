@@ -1,4 +1,5 @@
 import re
+from difflib import SequenceMatcher
 
 from backend.email_features import ATTACHMENT_PATTERN, prepare_email
 
@@ -49,22 +50,30 @@ def _matches(pattern, text):
 def _sender_impersonation(sender, urls):
     lowered = sender.lower()
     reasons = []
+    sender_match = re.search(r"[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})", sender, re.I)
+    sender_domain = sender_match.group(1).lower() if sender_match else ""
+
+    def trusted_domain(domain, known_domains):
+        return any(domain == known or domain.endswith(f".{known}") for known in known_domains)
+
+    def lookalike_brand(domain, brand, known_domains):
+        if not domain or not known_domains or trusted_domain(domain, known_domains):
+            return False
+        label = domain.split(".", 1)[0].replace("-", "").replace("_", "")
+        return len(label) >= 4 and SequenceMatcher(None, label, brand).ratio() >= 0.78
+
     for brand, domains in BRAND_DOMAINS.items():
-        if brand not in lowered:
-            continue
-        sender_domain = lowered.rsplit("@", 1)[-1].strip(" >")
-        if domains and not any(
-            sender_domain == domain or sender_domain.endswith(f".{domain}")
-            for domain in domains
-        ):
+        if brand in lowered and domains and sender_domain and not trusted_domain(sender_domain, domains):
             reasons.append(f"Sender display/address uses {brand} but is not from its known domain")
+        elif lookalike_brand(sender_domain, brand, domains):
+            reasons.append(f"Sender domain {sender_domain} resembles the {brand} domain")
     for item in urls:
+        domain = item["domain"].lower()
         for brand, domains in BRAND_DOMAINS.items():
-            if brand in item["anchor_text"].lower() and domains and not any(
-                item["domain"] == domain or item["domain"].endswith(f".{domain}")
-                for domain in domains
-            ):
+            if brand in item["anchor_text"].lower() and domains and not trusted_domain(domain, domains):
                 reasons.append(f"Link text invokes {brand} but points to {item['domain']}")
+            elif lookalike_brand(domain, brand, domains):
+                reasons.append(f"Link domain {domain} resembles the {brand} domain")
     return list(dict.fromkeys(reasons))
 
 
