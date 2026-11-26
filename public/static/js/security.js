@@ -336,6 +336,54 @@ async function loadModelDetails() {
   }
 }
 
+
+async function loadDomainRules() {
+  const list = $("#domain-rule-list");
+  if (!list) return;
+  try {
+    const result = await requestJSON("/api/domain-rules");
+    list.innerHTML = result.items.length ? result.items.map(rule => `
+      <div class="distribution-row">
+        <span><b>${escapeHTML(rule.domain)}</b><small>${escapeHTML(formatDate(rule.created_at))}</small></span>
+        <span class="classification-pill ${rule.action === "block" ? "phishing_suspicious" : "safe"}">${rule.action === "block" ? "BLOCK / FLAG" : "ALLOW / ANNOTATE"}</span>
+        <button type="button" class="button button-quiet" data-delete-domain-rule="${Number(rule.id)}">Remove</button>
+      </div>`).join("")
+      : '<p class="empty-row">No custom domain rules yet.</p>';
+  } catch (error) {
+    list.innerHTML = `<p class="empty-row">${escapeHTML(error.message)}</p>`;
+  }
+}
+
+$("#domain-rule-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const domain = $("#domain-rule-domain").value.trim();
+  const action = $("#domain-rule-action").value;
+  try {
+    await requestJSON("/api/domain-rules", {
+      method: "POST",
+      body: JSON.stringify({ domain, action })
+    });
+    $("#domain-rule-domain").value = "";
+    toast("Domain rule saved.");
+    loadDomainRules();
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+$("#domain-rule-list")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-delete-domain-rule]");
+  if (!button) return;
+  try {
+    await requestJSON(`/api/domain-rules/${button.dataset.deleteDomainRule}`, { method: "DELETE" });
+    toast("Domain rule removed.");
+    loadDomainRules();
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
 loadDashboard();
+loadDomainRules();
 loadHistory();
 loadModelDetails();
