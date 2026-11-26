@@ -75,6 +75,34 @@ def register(client, email, password="secure-demo-password-123"):
     return client
 
 
+def test_security_headers_and_private_api_cache_control(client):
+    page = client.get("/dashboard")
+    assert page.headers["X-Frame-Options"] == "DENY"
+    assert page.headers["X-Content-Type-Options"] == "nosniff"
+    assert page.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
+
+    response = client.get("/api/notifications")
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Cross-Origin-Resource-Policy"] == "same-origin"
+
+
+def test_email_link_input_has_per_item_length_limits(client):
+    too_long_url = "https://example.com/" + ("a" * 2_050)
+    response = client.post(
+        "/api/scan",
+        json={"subject": "Hello", "body": "Please review", "links": [too_long_url]},
+    )
+    assert response.status_code == 400
+    assert "Each link is limited" in response.get_json()["error"]
+
+
+def test_url_inspection_rejects_control_characters_and_invalid_idna():
+    from backend.email_features import _normalize_url
+
+    assert _normalize_url("https://example.com/\nmalicious") == ""
+    assert _normalize_url("https://exa\ud800mple.com") == ""
+
+
 def test_public_pages_auth_and_model_info(app):
     client = app.test_client()
     assert client.get("/").status_code == 200

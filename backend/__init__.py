@@ -338,8 +338,13 @@ def create_app(test_config=None):
     @app.after_request
     def secure_response_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
-        if request.endpoint in {"verify_email", "reset_password"}:
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        if is_vercel or request.is_secure:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        if request.path.startswith("/api/") or request.endpoint in {"verify_email", "reset_password"}:
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -429,6 +434,12 @@ def create_app(test_config=None):
             for item in links
         ):
             return None, "Each link must be text or an object containing text URL fields."
+        if any(
+            (len(item) > 2_048 if isinstance(item, str) else
+             len(item.get("url", "")) > 2_048 or len(item.get("text", "")) > 200)
+            for item in links
+        ):
+            return None, "Each link is limited to 2,048 URL characters and 200 display-text characters."
         record["links"] = links
         if not any(record[key] for key in ("subject", "body", "html_body")):
             return None, "Enter an email subject, body, or HTML content to analyze."

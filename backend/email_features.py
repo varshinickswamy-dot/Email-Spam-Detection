@@ -89,6 +89,8 @@ def normalize_text(value):
 
 def _normalize_url(value):
     url = str(value or "").strip().rstrip(".,;:!?)]}")
+    if not url or any(ord(character) < 32 for character in url) or any(character.isspace() for character in url):
+        return ""
     if url.lower().startswith("www."):
         url = f"http://{url}"
     if not url.lower().startswith(("http://", "https://")):
@@ -101,7 +103,9 @@ def _normalize_url(value):
         try:
             host = host.encode("idna").decode("ascii")
         except UnicodeError:
-            pass
+            return ""
+        if len(host) > 253 or any(not label or len(label) > 63 for label in host.split(".")):
+            return ""
         return url, host
     except ValueError:
         return ""
