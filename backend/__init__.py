@@ -52,6 +52,7 @@ from backend.database import (
     consume_account_token,
     consume_rate_limit,
     create_scan_batch,
+    create_notification,
     create_user,
     delete_user,
     get_batch_history,
@@ -180,6 +181,35 @@ def create_app(test_config=None):
                 record_security_event(app.config["DATABASE"], user_id, event, outcome, client_digest)
             except Exception:
                 app.logger.exception("Could not persist security activity event")
+            notification_details = {
+                ("login", "unverified"): (
+                    "Unverified login attempt",
+                    "A login was attempted before this account's email address was verified.",
+                    "warning",
+                ),
+                ("verification_email", "delivery_failed"): (
+                    "Verification email could not be sent",
+                    "InboxGuard could not deliver an account verification email. Check your email configuration or try again later.",
+                    "warning",
+                ),
+                ("registration", "verification_delivery_failed"): (
+                    "Registration email delivery failed",
+                    "Your account was created, but the verification email could not be delivered. Please retry verification.",
+                    "warning",
+                ),
+                ("password_reset_email", "delivery_failed"): (
+                    "Password reset email could not be sent",
+                    "InboxGuard could not deliver the password reset email. Please try again later.",
+                    "warning",
+                ),
+            }.get((event, outcome))
+            if notification_details:
+                try:
+                    create_notification(
+                        app.config["DATABASE"], user_id, *notification_details
+                    )
+                except Exception:
+                    app.logger.exception("Could not create security notification")
         SECURITY_LOGGER.info(
             "%s",
             json.dumps(
