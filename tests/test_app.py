@@ -9,6 +9,7 @@ import pytest
 from backend import create_app
 from backend import database
 from backend.detection_engine import analyze_email
+from backend.email_features import inspect_urls
 
 
 class StubEmailModel:
@@ -381,6 +382,26 @@ def test_history_filter_search_clear_and_export(client):
     assert response.get_json()["deleted"] == 2
     assert client.get("/api/stats").get_json()["total"] == 0
 
+
+def test_url_inspection_flags_deceptive_url_structure():
+    urls = inspect_urls({
+        "body": "Review https://trusted.example@evil.test:8443/login and https://a.b.c.d.evil.test/path",
+        "html_body": "",
+        "links": [],
+    })
+    first = next(item for item in urls if "trusted.example@evil.test" in item["url"])
+    second = next(item for item in urls if "a.b.c.d.evil.test" in item["url"])
+    assert "URL contains embedded user information" in first["flags"]
+    assert "non-standard URL port" in first["flags"]
+    assert "excessive subdomain depth" in second["flags"]
+
+
+def test_url_brand_impersonation_in_subdomain_is_flagged():
+    result = analyze_email(
+        {"subject": "Account notice", "sender": "Support <help@example.org>", "body": "Visit https://amazon.login.evil.test/verify", "html_body": "", "links": []},
+        0.05,
+    )
+    assert any("resembles the amazon domain" in reason.lower() for reason in result["reasons"])
 
 def test_brand_lookalike_sender_domain_is_flagged():
     result = analyze_email(
