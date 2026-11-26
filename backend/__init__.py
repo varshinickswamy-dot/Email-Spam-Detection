@@ -795,6 +795,7 @@ def create_app(test_config=None):
         return jsonify(deleted=deleted)
 
     @app.get("/api/history/export")
+    @app.get("/history/export")
     @login_required
     def export_history():
         output = io.StringIO(newline="")
