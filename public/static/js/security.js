@@ -147,6 +147,13 @@ function renderScanResult(result) {
   const urls = result.links.length
     ? result.links.map(link => `<li><div><b>${escapeHTML(link.domain)}</b><small>${escapeHTML(link.url)}</small></div>${link.flags.length ? `<span class="url-flags">${link.flags.map(escapeHTML).join(" · ")}</span>` : '<span class="url-safe">No URL pattern flag</span>'}</li>`).join("")
     : '<li class="muted-copy">No URLs detected.</li>';
+  const attachments = result.attachment_analysis;
+  const attachmentHtml = attachments
+    ? '<div class="finding-section"><h3>Attachment inspection</h3>' +
+      (attachments.items.length ? '<ul>' + attachments.items.map(item => '<li><b>' + escapeHTML(item.filename) + '</b> · ' + escapeHTML(item.content_type) + ' · ' + Number(item.size_bytes || 0).toLocaleString() + ' bytes · ' + escapeHTML(item.risk) + '</li>').join("") + '</ul>' : '<p class="muted-copy">No MIME attachments were found in this raw email.</p>') +
+      (attachments.findings.length ? '<ul>' + attachments.findings.map(item => '<li>' + escapeHTML(item) + '</li>').join("") + '</ul>' : '') +
+      '<small>Metadata-only inspection. Attachments are not opened, extracted, or executed.</small></div>'
+    : "";
   const auth = result.email_authentication;
   const authenticationHtml = auth
     ? '<div class="finding-section"><h3>Email authentication</h3><p>SPF: <b>' + escapeHTML(auth.spf.toUpperCase()) + '</b> · DKIM: <b>' + escapeHTML(auth.dkim.toUpperCase()) + '</b> · DMARC: <b>' + escapeHTML(auth.dmarc.toUpperCase()) + '</b></p>' +
@@ -161,6 +168,7 @@ function renderScanResult(result) {
     <div class="finding-section"><h3>Suspicious phrases</h3><div class="phrase-list">${phraseItems}</div></div>
     <div class="finding-section"><h3>Links inspected <small>(not opened)</small></h3><ul class="url-list">${urls}</ul></div>
     ${authenticationHtml}
+    ${attachmentHtml}
     <div class="recommendation"><b>Recommended action</b><p>${escapeHTML(result.recommended_action)}</p></div>`;
 }
 
