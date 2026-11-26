@@ -359,6 +359,11 @@ def test_history_filter_search_clear_and_export(client):
     assert browser_export.status_code == 200
     assert browser_export.mimetype == "text/csv"
     assert "inboxguard-history.csv" in browser_export.headers.get("Content-Disposition", "")
+    dedicated_export = client.get("/api/history/export.csv")
+    assert dedicated_export.status_code == 200
+    assert dedicated_export.mimetype == "text/csv"
+    assert dedicated_export.headers.get("Cache-Control", "").startswith("no-store")
+    assert "nosniff" in dedicated_export.headers.get("X-Content-Type-Options", "")
     rows = list(csv.reader(io.StringIO(export.data.decode("utf-8-sig"), newline="")))
     assert rows[0] == [
         "id",
