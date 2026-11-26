@@ -8,6 +8,7 @@ import pytest
 
 from backend import create_app
 from backend import database
+from backend.detection_engine import analyze_email
 
 
 class StubEmailModel:
@@ -380,6 +381,14 @@ def test_history_filter_search_clear_and_export(client):
     assert response.get_json()["deleted"] == 2
     assert client.get("/api/stats").get_json()["total"] == 0
 
+
+def test_brand_lookalike_sender_domain_is_flagged():
+    result = analyze_email(
+        {"subject": "Account notice", "sender": "Support <security@arnazon.com>", "body": "Please review this routine notice.", "html_body": "", "links": []},
+        0.05,
+    )
+    assert any("resembles the amazon domain" in reason.lower() for reason in result["reasons"])
+    assert result["risk_score"] >= 15
 
 def test_raw_email_scan_extracts_subject_and_sender(client):
     raw_email = (
