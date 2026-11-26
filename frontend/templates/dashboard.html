@@ -13,6 +13,10 @@
   <article class="stat-card"><span>Spam rate</span><b id="stat-rate">—</b><small>Share of all scans</small></article>
   <article class="stat-card"><span>Phishing signals</span><b id="stat-phishing">—</b><small>Rule-assisted warning</small></article>
 </section>
+<section class="surface recent-card campaign-alerts" aria-live="polite">
+  <div class="card-heading"><div><span class="eyebrow">THREAT INTELLIGENCE</span><h2>Phishing campaign alerts</h2></div><span class="quiet-label" id="campaign-alert-count">Checking patterns…</span></div>
+  <div id="campaign-alert-list"><p class="empty-row">Campaign alerts will appear here when repeated suspicious patterns are detected.</p></div>
+</section>
 <section class="dashboard-grid">
   <article class="surface chart-card"><div class="card-heading"><div><span class="eyebrow">CLASSIFICATION</span><h2>Scan distribution</h2></div><span class="quiet-label">Your account</span></div><div class="distribution" id="distribution"></div></article>
   <article class="surface model-summary"><div class="card-heading"><div><span class="eyebrow">MODEL STATUS</span><h2 id="model-name">Loading model…</h2></div><span class="status-pip"></span></div><p id="model-description">Email-specific model evaluation and calibration details.</p><div class="metric-row"><span>Spam precision <b id="metric-precision">—</b></span><span>Spam recall <b id="metric-recall">—</b></span><span>Spam F1 <b id="metric-f1">—</b></span></div><a class="inline-link" href="{{ url_for('about') }}">Review model details <span>→</span></a></article>
