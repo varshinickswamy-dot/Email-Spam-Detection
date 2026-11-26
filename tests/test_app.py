@@ -755,3 +755,26 @@ def test_history_export_neutralizes_spreadsheet_formulas(client):
     assert b"'=HYPERLINK" in response.data
     rows = list(csv.reader(io.StringIO(response.data.decode("utf-8-sig"), newline="")))
     assert any(row[3] == "'=2+2" for row in rows[1:])
+
+
+
+def test_scan_pdf_report_is_downloadable_and_account_scoped(client, app):
+    scan = client.post(
+        "/api/scan",
+        json={"sender": "alerts@example.test", "subject": "Prize", "body": "Claim your prize now"},
+    ).get_json()
+    response = client.get(f"/api/history/{scan['id']}/report.pdf")
+    assert response.status_code == 200
+    assert response.mimetype == "application/pdf"
+    assert response.data.startswith(b"%PDF")
+    assert f"inboxguard-scan-{scan['id']}-report.pdf" in response.headers["Content-Disposition"]
+    assert b"no-store" in response.headers["Cache-Control"]
+
+    other = app.test_client()
+    register(other, "other-analyst@example.org")
+    assert other.get(f"/api/history/{scan['id']}/report.pdf").status_code == 404
+
+
+def test_scan_pdf_report_requires_authentication(app):
+    response = app.test_client().get("/api/history/1/report.pdf")
+    assert response.status_code == 401
