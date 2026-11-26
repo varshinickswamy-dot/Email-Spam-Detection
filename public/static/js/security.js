@@ -122,7 +122,7 @@ async function loadDashboard() {
       <tr><td><b>${escapeHTML(item.subject || "(no subject)")}</b><small>${escapeHTML(item.sender || "Sender not provided")}</small></td>
       <td><span class="classification-pill ${escapeHTML(item.classification)}">${escapeHTML(classificationLabel(item.classification))}</span></td>
       <td><span class="risk-pill ${escapeHTML(item.risk_level)}">${escapeHTML(item.risk_level)}</span></td>
-      <td>${escapeHTML(formatDate(item.created_at))}</td></tr>`).join("")
+      <td>${escapeHTML(formatDate(item.created_at))}</td><td><a class="button button-quiet report-link" href="/api/history/${Number(item.id)}/report.pdf" aria-label="Download PDF report for scan ${Number(item.id)}">PDF report</a></td></tr>`).join("")
       : '<tr><td colspan="4" class="empty-row">No scans yet. Start by analyzing an email.</td></tr>';
   } catch (error) {
     toast(error.message);
