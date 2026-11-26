@@ -8,7 +8,7 @@ import pytest
 
 from backend import create_app
 from backend import database
-from backend.detection_engine import analyze_email
+from backend.detection_engine import analyze_email, detect_phishing_campaigns
 from backend.email_features import inspect_urls
 
 
@@ -402,6 +402,43 @@ def test_url_brand_impersonation_in_subdomain_is_flagged():
         0.05,
     )
     assert any("resembles the amazon domain" in reason.lower() for reason in result["reasons"])
+
+def test_phishing_campaign_detection_groups_repeated_suspicious_sender_domains():
+    from datetime import datetime, timezone
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    history = [
+        {
+            "sender": f"Alert {index} <notice@fake-bank.example>",
+            "subject": f"Urgent account notice {index}",
+            "classification": "phishing_suspicious",
+            "risk_level": "high",
+            "created_at": timestamp,
+        }
+        for index in range(3)
+    ]
+    alerts = detect_phishing_campaigns(history)
+    domain_alert = next(
+        alert for alert in alerts
+        if alert["type"] == "repeated_sender_domain"
+    )
+    assert domain_alert["indicator"] == "fake-bank.example"
+    assert domain_alert["count"] == 3
+
+
+def test_phishing_campaign_detection_ignores_safe_and_old_scans():
+    alerts = detect_phishing_campaigns([
+        {
+            "sender": "person@example.org",
+            "subject": "Routine update",
+            "classification": "safe",
+            "risk_level": "low",
+            "created_at": "2020-01-01T00:00:00+00:00",
+        }
+        for _ in range(5)
+    ])
+    assert alerts == []
+
 
 def test_brand_lookalike_sender_domain_is_flagged():
     result = analyze_email(
