@@ -108,7 +108,7 @@
         </section>
 
         <section class="history-section section-block" id="history">
-          <div class="section-heading compact-heading"><div><div class="eyebrow">RECENT ACTIVITY</div><h2>Prediction history</h2></div><div class="history-actions"><button class="button button-quiet button-small" id="export-button" type="button">↓ Export CSV</button><button class="button button-quiet button-small" id="clear-history-button" type="button">Clear history</button></div></div>
+          <div class="section-heading compact-heading"><div><div class="eyebrow">RECENT ACTIVITY</div><h2>Prediction history</h2></div><div class="history-actions"><a class="button button-quiet button-small" id="export-button" href="/api/history/export" aria-label="Export prediction history as CSV">↓ Export CSV</a><button class="button button-quiet button-small" id="clear-history-button" type="button">Clear history</button></div></div>
           <div class="panel history-panel">
             <div class="history-toolbar"><label class="search-box"><span>⌕</span><input id="history-search" type="search" placeholder="Search messages…"></label><select id="history-filter" aria-label="Filter by prediction"><option value="">All predictions</option><option value="spam">Spam</option><option value="not_spam">Legitimate</option></select></div>
             <div class="table-wrap"><table><thead><tr><th>MESSAGE</th><th>CLASSIFICATION</th><th>MODEL SCORE</th><th>DATE ANALYZED</th></tr></thead><tbody id="history-body"><tr><td class="empty-state" colspan="4">No messages analyzed yet. Your results will show here.</td></tr></tbody></table></div>
