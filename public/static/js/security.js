@@ -147,6 +147,12 @@ function renderScanResult(result) {
   const urls = result.links.length
     ? result.links.map(link => `<li><div><b>${escapeHTML(link.domain)}</b><small>${escapeHTML(link.url)}</small></div>${link.flags.length ? `<span class="url-flags">${link.flags.map(escapeHTML).join(" · ")}</span>` : '<span class="url-safe">No URL pattern flag</span>'}</li>`).join("")
     : '<li class="muted-copy">No URLs detected.</li>';
+  const auth = result.email_authentication;
+  const authenticationHtml = auth
+    ? '<div class="finding-section"><h3>Email authentication</h3><p>SPF: <b>' + escapeHTML(auth.spf.toUpperCase()) + '</b> · DKIM: <b>' + escapeHTML(auth.dkim.toUpperCase()) + '</b> · DMARC: <b>' + escapeHTML(auth.dmarc.toUpperCase()) + '</b></p>' +
+      (auth.findings.length ? '<ul>' + auth.findings.map(item => '<li>' + escapeHTML(item) + '</li>').join("") + '</ul>' : '<p class="muted-copy">No failure or reply-routing mismatch was found in the supplied headers.</p>') +
+      '<small>' + escapeHTML(auth.note) + '</small></div>'
+    : "";
   container.innerHTML = `
     <div class="result-topline"><span>ANALYSIS COMPLETE</span><span class="classification-pill ${escapeHTML(result.classification)}">${escapeHTML(result.classification_label)}</span></div>
     <div class="risk-heading"><div><span class="eyebrow">RISK LEVEL</span><h2 class="risk-text ${escapeHTML(result.risk_level)}">${escapeHTML(result.risk_level.toUpperCase())}</h2></div><div class="risk-score"><b>${escapeHTML(result.risk_score)}</b><small>Risk score / 100: Low 0-19, Medium 20-44, High 45-74, Critical 75-100</small></div></div>
@@ -154,6 +160,7 @@ function renderScanResult(result) {
     <div class="finding-section"><h3>Why it was flagged</h3><ul>${reasonItems}</ul></div>
     <div class="finding-section"><h3>Suspicious phrases</h3><div class="phrase-list">${phraseItems}</div></div>
     <div class="finding-section"><h3>Links inspected <small>(not opened)</small></h3><ul class="url-list">${urls}</ul></div>
+    ${authenticationHtml}
     <div class="recommendation"><b>Recommended action</b><p>${escapeHTML(result.recommended_action)}</p></div>`;
 }
 
