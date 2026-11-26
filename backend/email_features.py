@@ -270,14 +270,46 @@ def analyze_email_authentication(headers, sender=""):
         "note": "Authentication-Results headers are supplied by the receiving mail system; pasted or forged headers cannot independently prove authenticity.",
     }
 
+def analyze_attachments(attachments):
+    """Flag risky attachment types from MIME metadata; never execute or extract files."""
+    dangerous_extensions = {".exe", ".scr", ".js", ".jse", ".vbs", ".vbe", ".bat", ".cmd", ".ps1", ".hta", ".iso", ".img", ".lnk", ".jar", ".msi", ".docm", ".xlsm"}
+    reviewed = []
+    findings = []
+    for item in (attachments or [])[:50]:
+        filename = str(item.get("filename", "unnamed attachment"))[:255]
+        extension = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        dangerous = extension in dangerous_extensions
+        try:
+            size_bytes = max(0, int(item.get("size_bytes", 0) or 0))
+        except (TypeError, ValueError):
+            size_bytes = 0
+        reviewed.append({
+            "filename": filename,
+            "content_type": str(item.get("content_type", "unknown"))[:120],
+            "size_bytes": size_bytes,
+            "risk": "high" if dangerous else "review",
+        })
+        if dangerous:
+            findings.append(f"Potentially dangerous attachment type: {filename}.")
+    return {"items": reviewed, "findings": findings, "risk_points": min(20, len(findings) * 10)}
+
 def parse_raw_email(raw_email):
     message = BytesParser(policy=policy.default).parsebytes(
         str(raw_email).encode("utf-8", errors="replace")
     )
     plain_parts = []
     html_parts = []
+    attachments = []
     for part in message.walk():
-        if part.is_multipart() or part.get_content_disposition() == "attachment":
+        if part.is_multipart():
+            continue
+        if part.get_content_disposition() == "attachment" or part.get_filename():
+            payload = part.get_payload(decode=True) or b""
+            attachments.append({
+                "filename": str(part.get_filename() or "unnamed attachment")[:255],
+                "content_type": str(part.get_content_type() or "application/octet-stream")[:120],
+                "size_bytes": len(payload),
+            })
             continue
         if part.get_content_type() not in {"text/plain", "text/html"}:
             continue
@@ -298,6 +330,7 @@ def parse_raw_email(raw_email):
         "body": "\n".join(plain_parts or html_parts),
         "html_body": "\n".join(html_parts),
         "links": [],
+        "attachments": attachments[:50],
         "headers": {
             "authentication_results": " ".join(str(value) for value in message.get_all("Authentication-Results", [])),
             "reply_to": str(message.get("Reply-To", "") or ""),
