@@ -13,11 +13,11 @@
   <article class="stat-card"><span>Spam rate</span><b id="stat-rate">—</b><small>Share of all scans</small></article>
   <article class="stat-card"><span>Phishing signals</span><b id="stat-phishing">—</b><small>Rule-assisted warning</small></article>
 </section>
-<section class="surface recent-card campaign-alerts" aria-live="polite">
+<section id="campaign-alerts" class="surface recent-card campaign-alerts" aria-live="polite">
   <div class="card-heading"><div><span class="eyebrow">THREAT INTELLIGENCE</span><h2>Phishing campaign alerts</h2></div><span class="quiet-label" id="campaign-alert-count">Checking patterns…</span></div>
   <div id="campaign-alert-list"><p class="empty-row">Campaign alerts will appear here when repeated suspicious patterns are detected.</p></div>
 </section>
-<section class="surface recent-card domain-rules-card">
+<section id="domain-rules" class="surface recent-card domain-rules-card">
   <div class="card-heading"><div><span class="eyebrow">PERSONAL PROTECTION</span><h2>Custom domain rules</h2><p>Add domains you want InboxGuard to flag or recognize.</p></div></div>
   <form id="domain-rule-form" class="form-grid">
     <label>Domain<input id="domain-rule-domain" maxlength="253" placeholder="example.com" required></label>
@@ -28,9 +28,9 @@
   <div id="domain-rule-list"><p class="empty-row">Loading your domain rules…</p></div>
 </section>
 <section class="dashboard-grid">
-  <article class="surface chart-card"><div class="card-heading"><div><span class="eyebrow">CLASSIFICATION</span><h2>Scan distribution</h2></div><span class="quiet-label">Your account</span></div><div class="distribution" id="distribution"></div></article>
+  <article id="scan-distribution" class="surface chart-card"><div class="card-heading"><div><span class="eyebrow">CLASSIFICATION</span><h2>Scan distribution</h2></div><span class="quiet-label">Your account</span></div><div class="distribution" id="distribution"></div></article>
   <article class="surface model-summary"><div class="card-heading"><div><span class="eyebrow">MODEL STATUS</span><h2 id="model-name">Loading model…</h2></div><span class="status-pip"></span></div><p id="model-description">Email-specific model evaluation and calibration details.</p><div class="metric-row"><span>Spam precision <b id="metric-precision">—</b></span><span>Spam recall <b id="metric-recall">—</b></span><span>Spam F1 <b id="metric-f1">—</b></span></div><a class="inline-link" href="{{ url_for('about') }}">Review model details <span>→</span></a></article>
 </section>
-<section class="surface trend-card"><div class="card-heading"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>Daily scan volume</h2></div><span class="quiet-label">Last 14 days</span></div><div class="trend-chart" id="activity-chart"></div></section>
+<section id="activity-trend" class="surface trend-card"><div class="card-heading"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>Daily scan volume</h2></div><span class="quiet-label">Last 14 days</span></div><div class="trend-chart" id="activity-chart"></div></section>
 <section class="surface recent-card"><div class="card-heading"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>Latest scans</h2></div><a class="inline-link" href="{{ url_for('history_page') }}">View all <span>→</span></a></div><div class="table-wrap"><table><thead><tr><th>SUBJECT</th><th>CLASSIFICATION</th><th>RISK</th><th>TIME</th></tr></thead><tbody id="recent-scans"><tr><td colspan="4" class="empty-row">No scans yet. Start by analyzing an email.</td></tr></tbody></table></div></section>
 {% endblock %}
