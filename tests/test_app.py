@@ -124,6 +124,28 @@ def test_registration_requires_one_time_email_verification(app):
     )
 
 
+def test_mark_all_notifications_read_is_account_scoped(client, app):
+    client.post(
+        "/login",
+        data={"email": "analyst@example.org", "password": "secure-demo-password-123"},
+    )
+    user = database.get_user_by_email(app.config["DATABASE"], "analyst@example.org")
+    database.create_notification(app.config["DATABASE"], user["id"], "First", "One", "info")
+    database.create_notification(app.config["DATABASE"], user["id"], "Second", "Two", "warning")
+
+    response = client.post("/api/notifications/read-all")
+    assert response.status_code == 200
+    assert response.get_json()["updated"] == 2
+    result = client.get("/api/notifications").get_json()
+    assert result["unread_count"] == 0
+    assert all(item["is_read"] for item in result["items"])
+
+
+def test_mark_all_notifications_read_requires_authentication(app):
+    response = app.test_client().post("/api/notifications/read-all")
+    assert response.status_code == 401
+
+
 def test_password_recovery_is_generic_one_time_and_revokes_sessions(client, app):
     client.post(
         "/login",
