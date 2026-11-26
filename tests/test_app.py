@@ -597,6 +597,55 @@ def test_registration_rejects_weak_password_and_duplicate_email(app):
     assert b"already exists" in duplicate.data
 
 
+def test_domain_rules_can_be_created_listed_and_removed(client):
+    created = client.post(
+        "/api/domain-rules",
+        json={"domain": "www.Evil.Example.com", "action": "block"},
+    )
+    assert created.status_code == 201
+    rule = created.get_json()["item"]
+    assert rule["domain"] == "evil.example.com"
+    assert rule["action"] == "block"
+
+    listed = client.get("/api/domain-rules")
+    assert [item["id"] for item in listed.get_json()["items"]] == [rule["id"]]
+
+    removed = client.delete(f"/api/domain-rules/{rule['id']}")
+    assert removed.status_code == 200
+    assert removed.get_json()["deleted"] == 1
+    assert client.get("/api/domain-rules").get_json()["items"] == []
+
+
+def test_invalid_domain_rule_is_rejected(client):
+    response = client.post(
+        "/api/domain-rules",
+        json={"domain": "https://evil.example/path", "action": "block"},
+    )
+    assert response.status_code == 400
+
+
+def test_personal_blocklist_affects_future_scans(client):
+    saved = client.post(
+        "/api/domain-rules",
+        json={"domain": "evil.example", "action": "block"},
+    )
+    assert saved.status_code == 201
+
+    scanned = client.post(
+        "/api/scan",
+        json={
+            "sender": "Attacker <alert@evil.example>",
+            "subject": "Routine notice",
+            "body": "Please review this ordinary message.",
+        },
+    )
+    result = scanned.get_json()
+    assert scanned.status_code == 200
+    assert result["classification"] == "phishing_suspicious"
+    assert "evil.example" in result["domain_rule_matches"]["blocked"]
+    assert any("personal blocklist" in reason.lower() for reason in result["reasons"])
+
+
 def test_bulk_requires_csv_message_column(client):
     file_data = io.BytesIO(b"sender,subject\r\nperson@example.org,Hello\r\n")
     response = client.post(
