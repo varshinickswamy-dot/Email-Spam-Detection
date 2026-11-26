@@ -27,6 +27,7 @@
         <a href="{{ url_for('dashboard') }}#domain-rules"><span>⊞</span> Domain rules</a>
         <a href="{{ url_for('dashboard') }}#scan-distribution"><span>◉</span> Scan analytics</a>
         <a href="{{ url_for('dashboard') }}#activity-trend"><span>⌁</span> Activity trends</a>
+        <a href="{{ url_for('dashboard') }}#security-activity"><span>◷</span> Security activity</a>
         <a href="{{ url_for('account') }}" class="{% if request.endpoint == 'account' %}active{% endif %}"><span>⚙</span> Account</a>
       </nav>
       <div class="sidebar-bottom">
@@ -51,7 +52,7 @@
     {% block public_content %}{% endblock %}
   {% endif %}
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="{{ url_for('static', filename='js/security.js') }}?v=20261126-pdf-responsive-v1" defer></script>
+  <script src="{{ url_for('static', filename='js/security.js') }}?v=20261126-security-activity-v1" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
