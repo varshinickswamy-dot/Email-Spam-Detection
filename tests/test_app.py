@@ -792,3 +792,19 @@ def test_security_activity_is_persisted_and_scoped_to_account(client, app):
 
 def test_security_activity_requires_authentication(app):
     assert app.test_client().get("/api/security-events").status_code == 401
+
+def test_notifications_are_account_scoped_and_can_be_read_or_dismissed(client, app):
+    from backend.database import create_notification
+    with app.app_context():
+        create_notification(app.config["DATABASE"], 1, "Test warning", "Review activity.", "warning")
+    items = client.get("/api/notifications").get_json()["items"]
+    item = next(x for x in items if x["title"] == "Test warning")
+    assert client.patch(f"/api/notifications/{item['id']}", json={"action":"read"}).status_code == 200
+    other = app.test_client()
+    register(other, "notification-owner@example.org")
+    assert other.patch(f"/api/notifications/{item['id']}", json={"action":"dismiss"}).status_code == 404
+    assert client.patch(f"/api/notifications/{item['id']}", json={"action":"dismiss"}).status_code == 200
+
+
+def test_notifications_require_authentication(app):
+    assert app.test_client().get("/api/notifications").status_code == 401
