@@ -54,7 +54,7 @@ from backend.database import (
     store_account_token,
     verify_user,
 )
-from backend.detection_engine import analyze_email
+from backend.detection_engine import analyze_email, detect_phishing_campaigns
 from backend.email_features import analyze_attachments, analyze_email_authentication, parse_raw_email
 from backend.model_service import EmailSecurityModel
 
@@ -863,7 +863,11 @@ def create_app(test_config=None):
     @app.get("/api/stats")
     @login_required
     def stats():
-        return jsonify(get_statistics(app.config["DATABASE"], current_user()["id"]))
+        user_id = current_user()["id"]
+        statistics = get_statistics(app.config["DATABASE"], user_id)
+        recent_history = get_history(app.config["DATABASE"], user_id, limit=500)
+        statistics["campaign_alerts"] = detect_phishing_campaigns(recent_history)
+        return jsonify(statistics)
 
     @app.post("/api/bulk")
     @login_required
